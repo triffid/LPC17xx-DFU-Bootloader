@@ -33,10 +33,10 @@ typedef struct
 
 typedef struct
 {
-	uint8_t		bStatus,
-	uint8_t		bwPollTimeout[3],
-	uint8_t		bState,
-	uint8_t		iString
+	uint8_t		bStatus;
+	uint8_t		bwPollTimeout[3];
+	uint8_t		bState;
+	uint8_t		iString;
 } DFU_Status_Response;
 
 void DFU_init(void);

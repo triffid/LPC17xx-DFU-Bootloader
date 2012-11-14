@@ -1,7 +1,6 @@
 #ifndef _UART_H
 #define	_UART_H
 
-#include <stdio.h>
 #include <stdint.h>
 
 #include "pins.h"
@@ -21,7 +20,7 @@ typedef struct
 void		UART_init(PinName rxpin, PinName txpin, int baud);
 void		UART_pin_init(PinName rxpin, PinName txpin);
 int			UART_baud(int baud);
-uint32_t	UART_send(uint8_t *buf, uint32_t buflen);
+uint32_t	UART_send(const uint8_t *buf, uint32_t buflen);
 // uint32_t	UART_send(const char *buf, uint32_t buflen);
 uint32_t	UART_recv(uint8_t *buf, uint32_t buflen);
 int			UART_cansend(void);

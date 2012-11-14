@@ -54,7 +54,7 @@ CDEFS    = MAX_URI_LENGTH=512 __LPC17XX__ USB_DEVICE_ONLY
 FLAGS    = -O$(OPTIMIZE) -mcpu=$(MCU) -mthumb -mthumb-interwork -mlong-calls -ffunction-sections -fdata-sections -Wall -g -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
 FLAGS   += $(patsubst %,-I%,$(INC))
 FLAGS   += $(patsubst %,-D%,$(CDEFS))
-CFLAGS   = $(FLAGS) -std=gnu99 -pipe
+CFLAGS   = $(FLAGS) -std=gnu99 -pipe -fno-builtin-printf -fno-builtin-fprintf -fno-builtin-vfprintf
 ASFLAGS  = $(FLAGS)
 CXXFLAGS = $(FLAGS) -fno-rtti -fno-exceptions -std=gnu++0x
 
@@ -88,10 +88,9 @@ clean:
 	@echo "  RM    " "build/"
 	@$(RMDIR) $(OUTDIR); true
 
-program: $(OUTDIR)/$(PROJECT).bin
-	mount /mnt/smoothie
-	cp $< /mnt/smoothie/firmware.bin
-	umount /mnt/smoothie
+program: $(OUTDIR)/$(PROJECT).hex
+	lpc21isp $^ /dev/arduino 115200 12000
+
 upload: program
 
 # size: $(OUTDIR)/$(PROJECT).elf

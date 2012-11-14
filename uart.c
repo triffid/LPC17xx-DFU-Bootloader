@@ -182,8 +182,8 @@ int UART_baud(int baud)
     return baud;
 }
 
-uint32_t UART_send(uint8_t *buf, uint32_t buflen) {
-    uint8_t *data = (uint8_t *) buf;
+uint32_t UART_send(const uint8_t *data, uint32_t buflen) {
+//     uint8_t *data = (uint8_t *) buf;
     uint32_t bytes = 0;
 
     // only fiddle interrupt status outside interrupt context

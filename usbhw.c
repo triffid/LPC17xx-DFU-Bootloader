@@ -157,5 +157,5 @@ void usb_task()
 }
 
 __attribute__ ((interrupt)) void USB_IRQHandler() {
-	usb_task();
+// 	usb_task();
 }

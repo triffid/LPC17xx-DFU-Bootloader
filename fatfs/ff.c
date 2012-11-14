@@ -954,7 +954,7 @@ FRESULT remove_chain (
 #if _USE_ERASE
 			if (ecl + 1 == nxt) {	/* Is next cluster contiguous? */
 				ecl = nxt;
-			} else {				/* End of contiguous clusters */ 
+			} else {				/* End of contiguous clusters */
 				rt[0] = clust2sect(fs, scl);					/* Start sector */
 				rt[1] = clust2sect(fs, ecl) + fs->csize - 1;	/* End sector */
 				disk_ioctl(fs->drv, CTRL_ERASE_SECTOR, rt);		/* Erase the block */
@@ -2107,6 +2107,7 @@ FRESULT chk_mounted (	/* FR_OK(0): successful, !=0: any error occurred */
 		/* Check the partition listed in the partition table */
 		pi = LD2PT(vol);
 		if (pi) pi--;
+// 		printf("FF:pi is %d\n", pi);
 		tbl = &fs->win[MBR_Table + pi * SZ_PTE];/* Partition table */
 		if (tbl[4]) {						/* Is the partition existing? */
 			bsect = LD_DWORD(&tbl[8]);		/* Partition offset in LBA */
@@ -2705,7 +2706,7 @@ FRESULT f_close (
 		FATFS *fs = fp->fs;;
 		res = validate(fp);
 		if (res == FR_OK) {
-			res = dec_lock(fp->lockid);	
+			res = dec_lock(fp->lockid);
 			unlock_fs(fs, FR_OK);
 		}
 #else
@@ -2804,7 +2805,7 @@ FRESULT f_getcwd (
 				res = dir_read(&dj);
 				if (res != FR_OK) break;
 				if (ccl == ld_clust(dj.fs, dj.dir)) break;	/* Found the entry */
-				res = dir_next(&dj, 0);	
+				res = dir_next(&dj, 0);
 			} while (res == FR_OK);
 			if (res == FR_NO_FILE) res = FR_INT_ERR;/* It cannot be 'not found'. */
 			if (res != FR_OK) break;

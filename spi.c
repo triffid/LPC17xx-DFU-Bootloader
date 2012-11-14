@@ -28,6 +28,7 @@ void SPI_init(PinName mosi, PinName miso, PinName sclk)
         // SSP1 on 0.7,0.8,0.9
         sspr = LPC_SSP1;
 //         isr_dispatch[1] = this;
+// 		printf("SPI:Using SSP1\n");
 
         LPC_PINCON->PINSEL0 &= ~((3 << (7*2)) | (3 << (8*2)) | (3 << (9*2)));
         LPC_PINCON->PINSEL0 |=  ((2 << (7*2)) | (2 << (8*2)) | (2 << (9*2)));
@@ -128,7 +129,7 @@ uint8_t SPI_write(uint8_t data)
 {
 //     _cs = 1;
     uint8_t r = 0;
-//     iprintf("SPI: >0x%02X", data);
+//     printf("SPI: >0x%x", data);
     if (sspr) {
         while ((sspr->SR & SSP_SR_TNF) == 0);
         sspr->DR = data;
@@ -157,7 +158,7 @@ uint8_t SPI_write(uint8_t data)
         }
         FIO_ClearValue(sclk.port, 1UL << sclk.pin);
     }
-//     iprintf(" <0x%02X\n", r);
+//     printf(" <0x%x\n", r);
     return r;
 }
 
