@@ -12,7 +12,7 @@ void GPIO_setup(PinName pin) {
 	PINSEL_CFG_Type PinCfg;
 	PinCfg.Funcnum = 0;
 	PinCfg.OpenDrain = PINSEL_PINMODE_NORMAL;
-	PinCfg.Pinmode = PINSEL_PINMODE_TRISTATE;
+	PinCfg.Pinmode = PINSEL_PINMODE_PULLUP;
 	PinCfg.Portnum = PORT(pin);
 	PinCfg.Pinnum = PIN(pin);
 	PINSEL_ConfigPin(&PinCfg);
