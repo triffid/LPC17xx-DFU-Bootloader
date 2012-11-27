@@ -1,5 +1,7 @@
 #include "dfu.h"
 
+#include <stdio.h>
+
 #include "usbcore.h"
 #include "usbhw.h"
 
@@ -7,12 +9,20 @@
 
 #include "sbl_iap.h"
 
+#include "string.h"
+
 typedef struct
+__attribute__ ((packed))
 {
 	usbdesc_device device;
 	usbdesc_configuration configuration;
 	usbdesc_interface	interface;
 	DFU_functional_descriptor dfufunc;
+	usbdesc_language lang;
+	usbdesc_string_l(12);
+	usbdesc_string_l(8);
+	usbdesc_string_l(12);
+	usbdesc_base endnull;
 } DFU_APP_Descriptor;
 
 DFU_APP_Descriptor desc =
@@ -28,15 +38,15 @@ DFU_APP_Descriptor desc =
 		0x1D50,					// idVendor
 		0x6015,					// idProduct
 		0x0100,					// bcdDevice (serial number)
-		0,							// iManufacturer
-		0,							// iProduct
+		1,							// iManufacturer
+		2,							// iProduct
 		0,							// iSerial
 		1							// bNumConfigurations
 	},
 	{
 		DL_CONFIGURATION,
 		DT_CONFIGURATION,
-		sizeof(usbdesc_configuration) + sizeof(usbdesc_interface) + sizeof(DFU_functional_descriptor),
+		DL_CONFIGURATION + DL_INTERFACE + DL_DFU_FUNCTIONAL_DESCRIPTOR,
 		1,							// bNumInterfaces
 		1,							// bConfigurationValue
 		0,							// iConfiguration
@@ -52,36 +62,258 @@ DFU_APP_Descriptor desc =
 		DFU_INTERFACE_CLASS,		// bInterfaceClass
 		DFU_INTERFACE_SUBCLASS,		// bInterfaceSubClass
 		DFU_INTERFACE_PROTOCOL_DFUMODE,		// bInterfaceProtocol
-		0							// iInterface
+		3							// iInterface
 	},
 	{
 		DL_DFU_FUNCTIONAL_DESCRIPTOR,
 		DT_DFU_FUNCTIONAL_DESCRIPTOR,
-		DFU_BMATTRIBUTES_WILLDETACH | DFU_BMATTRIBUTES_CANDOWNLOAD,
+		DFU_BMATTRIBUTES_WILLDETACH | DFU_BMATTRIBUTES_CANDOWNLOAD | DFU_BMATTRIBUTES_CANUPLOAD,
 		500,						// wDetachTimeout - time in milliseconds between receiving detach request and issuing usb reset
 		512,						// wTransferSize - the size of each packet of firmware sent from the host via control transfers
 		DFU_VERSION_1_1	// bcdDFUVersion
+	},
+	{
+		DL_LANGUAGE,
+		DT_LANGUAGE,
+		{ SL_USENGLISH }
+	},
+	usbstring(12, "SmoothieWare"),
+	usbstring(8 , "Smoothie"),
+	usbstring(12, "Smoothie DFU"),
+	{
+		0,							// bLength
+		0							// bDescType
 	}
 };
 
+typedef struct
+__attribute__ ((packed))
+{
+	uint8_t		bStatus;			// status of most recent command
+	uint32_t	bwPollTimeout:24;	// time to next poll
+	uint8_t		bState;				// state that we're about to enter
+	uint8_t		iString;			// optional string description for status
+} DFU_STATUS_t;
+
+typedef enum
+{
+	OK,					// No error
+	errTARGET,			// File is not for this device
+	errFILE,			// File is for this device but isn't right for some vendor-specific reason
+	errWRITE,			// unable to write
+	errERASE,			// erase failed
+	errCHECK_ERASED,	// erase seemed to work but there's still data there
+	errPROG,			// program memory function failed
+	errVERIFY,			// verification failed
+	errADDRESS,			// address out of range
+	errNOTDONE,			// received end-of-data marker but we don't think we're finished yet
+	errFIRMWARE,		// downloaded firmware is corrupt, can't exit DFU mode
+	errVENDOR,			// iString indicates vendor specific error
+	errUSBR,			// received unexpected USB reset
+	errPOR,				// unexpected power-on reset
+	errUNKNOWN,			// something went wrong, we just don't know what!
+	errSTALLEDPKT		// device stalled something unexpected
+} DFU_STATUS_enum;
+
+typedef enum
+{
+	appIDLE,			// device is running firmware
+	appDETACH,			// device is waiting for USB reset to begin DFU
+	dfuIDLE,			// DFU mode is waiting for commands
+	dfuDNLOADSYNC,		// device has a block and is waiting for host to issue GETSTATUS
+	dfuDNBUSY,			// device is flashing a block
+	dfuDNLOADIDLE,		// device is waiting for more data
+	dfuMANIFESTSYNC,	// device is waiting GETSTATUS so we can enter or exit manifestation
+	dfuMANIFEST,		// device is flashing
+	dfuMANIFESTWAITRESET,	// device has finished flashing and is waiting for USB reset
+	dfuUPLOADIDLE,		// device is waiting for UPLOAD requests
+	dfuERROR,			// device has experienced an error, is waiting for CLRSTATUS
+} DFU_STATE_enum;
+
+DFU_STATE_enum current_state;
+
+DFU_STATUS_t DFU_status = {
+	OK,
+	500,
+	dfuIDLE,
+	0
+};
+
+uint8_t block_buffer[512];
+const uint8_t * flash_p;
+
+extern const uint8_t _user_flash_start;
+extern const uint8_t _user_flash_size;
+
+#include "LPC17xx.h"
+#include "lpc17xx_usb.h"
+
 void DFU_init()
 {
-// 	usb_write_packet(0, &desc, sizeof(desc));
+	usb_provideDescriptors(&desc);
+	flash_p = &_user_flash_start;
+	printf("user flash: %p\n", flash_p);
+}
+
+void DFU_GetStatus(CONTROL_TRANSFER *control)
+{
+	printf("DFU:GETSTATUS, sending %d, %d (%dms)\n", DFU_status.bStatus, DFU_status.bState, DFU_status.bwPollTimeout);
+	control->buffer = &DFU_status;
+	control->bufferlen = 6;
+}
+
+void DFU_GetState(CONTROL_TRANSFER *control)
+{
+	control->buffer = &current_state;
+	control->bufferlen = 1;
+}
+
+void DFU_Download(CONTROL_TRANSFER *control)
+{
+	control->buffer = block_buffer;
+	control->bufferlen = control->setup.wLength;
+
+	if (control->setup.wLength > 0)
+	{
+		if ((flash_p + control->setup.wLength) < ((&_user_flash_start) + ((uint32_t)(&_user_flash_size))))
+		{
+			current_state = dfuDNLOADSYNC;
+			DFU_status.bState = dfuDNLOADIDLE;
+		}
+		else {
+			current_state = dfuERROR;
+			DFU_status.bStatus = errADDRESS;
+			DFU_status.bState = dfuERROR;
+		}
+	}
+}
+
+void DFU_Upload(CONTROL_TRANSFER *control)
+{
+	current_state = dfuUPLOADIDLE;
+	memcpy(block_buffer, flash_p, control->setup.wLength);
+	control->buffer = block_buffer;
+	control->bufferlen = control->setup.wLength;
+}
+
+void DFU_ClearStatus(CONTROL_TRANSFER *control)
+{
+	DFU_status.bStatus = OK;
+	DFU_status.bState = dfuIDLE;
+	flash_p = &_user_flash_start;
+}
+
+void DFU_Abort(CONTROL_TRANSFER *control)
+{
+	DFU_status.bStatus = OK;
+	DFU_status.bState = dfuIDLE;
+	flash_p = &_user_flash_start;
 }
 
 void DFU_controlTransfer(CONTROL_TRANSFER *control)
 {
+	// 0x20 is CLASS request
+	// 0x01 is INTERFACE target
+	// MSBit is transfer direction
+	if ((control->setup.bmRequestType & 0x7F) == 0x21)
+	{
+		switch(control->setup.bRequest)
+		{
+			case DFU_DETACH:
+				// shouldn't happen, we're already in DFU mode
+				break;
+			case DFU_DNLOAD:
+				DFU_Download(control);
+				break;
+			case DFU_UPLOAD:
+				DFU_Upload(control);
+				break;
+			case DFU_GETSTATUS:
+				DFU_GetStatus(control);
+				break;
+			case DFU_CLRSTATUS:
+				DFU_ClearStatus(control);
+				break;
+			case DFU_GETSTATE:
+				DFU_GetState(control);
+				break;
+			case DFU_ABORT:
+				DFU_Abort(control);
+				break;
+		}
+	}
 }
 
-void EP0in()
+void DFU_transferComplete(CONTROL_TRANSFER *control)
 {
-}
+	if ((control->setup.bmRequestType & 0x7F) == 0x21)
+	{
+		switch(control->setup.bRequest)
+		{
+			case DFU_GETSTATUS:
+			{
+				current_state = DFU_status.bState;
 
-void EP0out()
-{
+				printf("new state is %d\n", current_state);
+
+				if (current_state == dfuMANIFESTWAITRESET)
+				{
+					usb_disconnect();
+					printf("MANIFEST COMPLETE, usb disconnected\n");
+				}
+
+				break;
+			}
+			case DFU_DNLOAD:
+			{
+				if (control->setup.wLength > 0)
+				{
+					printf("WRITE %p\n", flash_p);
+					int r = write_flash((void *) flash_p, (char *) block_buffer, control->setup.wLength);
+// 					int r;
+// 					for (r = 0; r < control->setup.wLength; r++)
+// 					{
+// 						printf("0x%x ", flash_p[r]);
+// 						if ((r & 31) == 31)
+// 							printf("\n");
+// 					}
+					if (r == 0)
+					{
+						flash_p += control->setup.wLength;
+						DFU_status.bState = dfuDNLOADIDLE;
+					}
+					else
+					{
+						printf("write flash error %d\n", r);
+						DFU_status.bStatus = errPROG;
+						DFU_status.bState = dfuERROR;
+					}
+				}
+				else
+				{
+					current_state = dfuMANIFESTSYNC;
+					DFU_status.bState = dfuMANIFESTWAITRESET;
+				}
+				break;
+			}
+			case DFU_UPLOAD:
+				DFU_status.bState = dfuUPLOADIDLE;
+				flash_p += control->setup.wLength;
+				break;
+		}
+	}
 }
 
 int DFU_complete()
 {
-	return 0;
+	return (current_state == dfuMANIFESTWAITRESET);
+}
+
+void USBEvent_busReset()
+{
+	if (current_state == dfuMANIFESTWAITRESET || current_state == dfuMANIFESTSYNC ||current_state == dfuMANIFEST)
+	{
+		usb_disconnect();
+		NVIC_SystemReset();
+	}
 }

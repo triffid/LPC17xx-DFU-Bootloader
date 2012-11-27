@@ -11,6 +11,8 @@ extern "C"
 #define EP2IDX(bEP)			((((bEP)&0xF)<<1)|(((bEP)&0x80)>>7))
 #define IDX2EP(idx)			((((idx)<<7)&0x80)|(((idx)>>1)&0xF))
 
+#define EP(x)				(1UL<<EP2IDX(x))
+
 // USBClkCtrl
 #define DEV_CLK_EN			(1UL<<1)
 #define AHB_CLK_EN			(1UL<<4)

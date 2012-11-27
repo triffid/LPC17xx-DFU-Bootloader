@@ -42,6 +42,13 @@ int usb_write_packet(uint8_t bEP, void *data, int packetlen);
 int usb_can_read(uint8_t bEP);
 int usb_read_packet(uint8_t bEP, void *buffer, int buffersize);
 
+void usb_connect(void);
+void usb_disconnect(void);
+
+void usb_ep_stall(uint8_t bEP);
+void usb_ep_unstall(uint8_t bEP);
+void usb_ep0_stall(void);
+
 #ifdef __cplusplus
 }
 #endif

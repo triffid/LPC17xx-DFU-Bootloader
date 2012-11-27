@@ -21,7 +21,11 @@ typedef enum
 	REQ_SET_CONFIGURATION		= 9,
 } USB_REQUEST;
 
+#define DATA_DIRECTION_HOST_TO_DEVICE 0
+#define DATA_DIRECTION_DEVICE_TO_HOST 1
+
 typedef struct
+__attribute__ ((packed))
 {
 	union {
 		struct {
@@ -32,7 +36,7 @@ typedef struct
 		uint8_t bmRequestType;
 	};
 
-	USB_REQUEST	bRequest;
+	uint8_t		bRequest;
 	uint16_t	wValue;
 	uint16_t	wIndex;
 	uint16_t	wLength;
@@ -40,12 +44,18 @@ typedef struct
 
 typedef struct
 {
-	SETUP_PACKET setup;
-
 	void *buffer;
 	int bufferlen;
 
+	uint8_t zlp;
+	uint8_t complete;
+
+	SETUP_PACKET setup;
 } CONTROL_TRANSFER;
+
+
+
+void usb_provideDescriptors(void *d);
 
 void EP0setup(void);
 void EP0in(void);

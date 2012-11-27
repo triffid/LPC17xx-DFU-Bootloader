@@ -12,26 +12,24 @@ void SIE_CMD(uint8_t cmd)
 	LPC_USB->USBDevIntClr = CCEMPTY | CDFULL;
 	LPC_USB->USBCmdCode = CMD_CODE(cmd) | CMD_PHASE_COMMAND;
 	while (!(LPC_USB->USBDevIntSt & CCEMPTY));
-	LPC_USB->USBDevIntClr = CCEMPTY;
+// 	LPC_USB->USBDevIntClr = CCEMPTY;
 }
 
 uint8_t SIE_CMD_READ(uint8_t cmd)
 {
-	uint8_t r;
-	LPC_USB->USBDevIntClr = CCEMPTY | CDFULL;
+	LPC_USB->USBDevIntClr = CDFULL;
 	LPC_USB->USBCmdCode = CMD_CODE(cmd) | CMD_PHASE_READ;
 	while (!(LPC_USB->USBDevIntSt & CDFULL));
-	LPC_USB->USBDevIntClr = CDFULL;
-	r = LPC_USB->USBCmdData;
-	return r;
+// 	LPC_USB->USBDevIntClr = CDFULL;
+	return LPC_USB->USBCmdData;
 }
 
 void SIE_CMD_WRITE(uint8_t data)
 {
-	LPC_USB->USBDevIntClr = CCEMPTY | CDFULL;
+	LPC_USB->USBDevIntClr = CCEMPTY;
 	LPC_USB->USBCmdCode = CMD_WDATA(data) | CMD_PHASE_WRITE;
 	while (!(LPC_USB->USBDevIntSt & CCEMPTY));
-	LPC_USB->USBDevIntClr = CCEMPTY;
+// 	LPC_USB->USBDevIntClr = CCEMPTY;
 }
 
 void		SIE_SetAddress(uint8_t address)
@@ -123,7 +121,7 @@ uint8_t		SIE_SelectEndpoint(uint8_t bEP)
 {
 	uint8_t r;
 	__disable_irq();
-	     SIE_CMD(SIE_EP_CMD_Select | (EP2IDX(bEP) & 0x1F));
+	         SIE_CMD(SIE_EP_CMD_Select | (EP2IDX(bEP) & 0x1F));
 	r = SIE_CMD_READ(SIE_EP_CMD_Select | (EP2IDX(bEP) & 0x1F));
 	__enable_irq();
 	return r;
@@ -133,8 +131,11 @@ uint8_t		SIE_SelectEndpointClearInterrupt(uint8_t bEP)
 {
 	uint8_t r;
 	__disable_irq();
-	     SIE_CMD(SIE_EP_CMD_SelectClearInt | (EP2IDX(bEP) & 0x1F));
-	r = SIE_CMD_READ(SIE_EP_CMD_SelectClearInt | (EP2IDX(bEP) & 0x1F));
+// 	         SIE_CMD(SIE_EP_CMD_SelectClearInt | (EP2IDX(bEP) & 0x1F));
+// 	r = SIE_CMD_READ(SIE_EP_CMD_SelectClearInt | (EP2IDX(bEP) & 0x1F));
+	LPC_USB->USBEpIntClr = EP(bEP);
+	while (!(LPC_USB->USBDevIntSt & CDFULL));
+	r = LPC_USB->USBCmdData;
 	__enable_irq();
 	return r;
 }

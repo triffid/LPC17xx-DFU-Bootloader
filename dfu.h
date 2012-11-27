@@ -17,14 +17,24 @@
 #define DFU_VERSION_1_1					0x0101
 
 #define DFU_INTERFACE_CLASS				0xFE
-#define DFU_INTERFACE_SUBCLASS		0x01
-#define DFU_INTERFACE_PROTOCOL_RUNTIME		0x01
+#define DFU_INTERFACE_SUBCLASS			0x01
+#define DFU_INTERFACE_PROTOCOL_RUNTIME	0x01
 #define DFU_INTERFACE_PROTOCOL_DFUMODE	0x02
 
 #define DFU_BMATTRIBUTES_WILLDETACH			(1<<3)
 #define DFU_BMATTRIBUTES_MANIFEST_TOLERANT	(1<<2)	/* device keeps talking while flashing? */
 #define DFU_BMATTRIBUTES_CANUPLOAD			(1<<1)
 #define DFU_BMATTRIBUTES_CANDOWNLOAD		(1<<0)
+
+#define DFU_DETACH		0
+#define DFU_DNLOAD		1
+#define DFU_UPLOAD		2
+#define DFU_GETSTATUS	3
+#define DFU_CLRSTATUS	4
+#define DFU_GETSTATE	5
+#define DFU_ABORT		6
+
+#include "usbcore.h"
 
 typedef struct
 {
@@ -46,6 +56,8 @@ typedef struct
 
 void DFU_init(void);
 
+void DFU_controlTransfer(CONTROL_TRANSFER *);
+void DFU_transferComplete(CONTROL_TRANSFER *);
 int DFU_complete(void);
 
 #endif /* _DFU_H */
