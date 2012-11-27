@@ -17,7 +17,7 @@
 
 #include "min-printf.h"
 
-#define ISP_BTN	P2_10
+#define ISP_BTN	P2_12
 
 FATFS	fat;
 FIL		file;
@@ -43,8 +43,10 @@ void start_dfu()
 {
 	DFU_init();
 	usb_init();
+	usb_connect();
 	while (DFU_complete() == 0)
 		usb_task();
+	usb_disconnect();
 }
 
 void check_sd_firmware()
@@ -109,8 +111,11 @@ int main()
 	if (SDCard_disk_initialize() == 0)
 		check_sd_firmware();
 
-	if (isp_btn_pressed())
+	if (isp_btn_pressed() == 0)
+	{
+		printf("ISP button pressed, entering DFU mode\n");
 		start_dfu();
+	}
 
 	// grab user code reset vector
 	unsigned *p = (unsigned *)(USER_FLASH_START +4);
