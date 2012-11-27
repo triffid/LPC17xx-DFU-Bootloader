@@ -29,6 +29,7 @@
 // contained within binary image is valid.
 #define COMPUTE_BINARY_CHECKSUM
 
+/*
 const unsigned sector_start_map[MAX_FLASH_SECTOR] = {SECTOR_0_START,             \
 SECTOR_1_START,SECTOR_2_START,SECTOR_3_START,SECTOR_4_START,SECTOR_5_START,      \
 SECTOR_6_START,SECTOR_7_START,SECTOR_8_START,SECTOR_9_START,SECTOR_10_START,     \
@@ -44,6 +45,7 @@ SECTOR_13_END,SECTOR_14_END,SECTOR_15_END,SECTOR_16_END,SECTOR_17_END,          
 SECTOR_18_END,SECTOR_19_END,SECTOR_20_END,SECTOR_21_END,SECTOR_22_END,           \
 SECTOR_23_END,SECTOR_24_END,SECTOR_25_END,SECTOR_26_END,                         \
 SECTOR_27_END,SECTOR_28_END,SECTOR_29_END										 };
+*/
 
 unsigned param_table[5];
 unsigned result_table[5];
@@ -102,9 +104,9 @@ void find_erase_prepare_sector(unsigned cclk, unsigned flash_address)
     __disable_irq();
     for(i=USER_START_SECTOR;i<=MAX_USER_SECTOR;i++)
     {
-        if(flash_address < sector_end_map[i])
+        if(flash_address < SECTOR_END(i))
         {
-            if( flash_address == sector_start_map[i])
+            if( flash_address == SECTOR_START(i))
             {
                 prepare_sector(i,i,cclk);
                 erase_sector(i,i,cclk);
