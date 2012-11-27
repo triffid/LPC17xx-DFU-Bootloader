@@ -36,9 +36,6 @@ void setleds(int leds)
 
 int isp_btn_pressed()
 {
-	GPIO_init(ISP_BTN);
-	for (int i = 128; i; i--)
-		GPIO_input(ISP_BTN);
 	return GPIO_get(ISP_BTN);
 }
 
@@ -46,7 +43,7 @@ void start_dfu()
 {
 	DFU_init();
 	usb_init();
-	while (1)
+	while (DFU_complete() == 0)
 		usb_task();
 }
 
@@ -69,7 +66,6 @@ void check_sd_firmware()
 				return;
 			}
 
-// 			int led_address = (address - USER_FLASH_START) >> 15;
 			setleds((address - USER_FLASH_START) >> 15);
 
 			printf("\t0x%lx\n", address);
@@ -93,6 +89,8 @@ void check_sd_firmware()
 
 int main()
 {
+	GPIO_init(ISP_BTN); GPIO_input(ISP_BTN);
+
 	GPIO_init(LED1); GPIO_output(LED1);
 	GPIO_init(LED2); GPIO_output(LED2);
 	GPIO_init(LED3); GPIO_output(LED3);
@@ -110,6 +108,9 @@ int main()
 	SDCard_init(P0_9, P0_8, P0_7, P0_6);
 	if (SDCard_disk_initialize() == 0)
 		check_sd_firmware();
+
+	if (isp_btn_pressed())
+		start_dfu();
 
 	// grab user code reset vector
 	unsigned *p = (unsigned *)(USER_FLASH_START +4);
