@@ -64,37 +64,36 @@ void iap_entry(unsigned param_tab[],unsigned result_tab[]);
 
 unsigned write_flash(unsigned * dst, char * src, unsigned no_of_bytes)
 {
-  unsigned i;
+	unsigned i;
 
-    if (flash_address == 0)
+	if (flash_address == 0)
 	{
-	  /* Store flash start address */
-	  flash_address = (unsigned *)dst;
+		/* Store flash start address */
+		flash_address = (unsigned *)dst;
 	}
+
 	for( i = 0;i<no_of_bytes;i++ )
 	{
-	  flash_buf[(byte_ctr+i)] = *(src+i);
-    }
+		flash_buf[(byte_ctr+i)] = *(src+i);
+	}
 	byte_ctr = byte_ctr + no_of_bytes;
 
 	if( byte_ctr == FLASH_BUF_SIZE)
 	{
-	  /* We have accumulated enough bytes to trigger a flash write */
-	  find_erase_prepare_sector(SystemCoreClock/1000, (unsigned)flash_address);
-      if(result_table[0] != CMD_SUCCESS)
-      {
-        while(1); /* No way to recover. Just let Windows report a write failure */
-      }
-      write_data(SystemCoreClock/1000,(unsigned)flash_address,(unsigned *)flash_buf,FLASH_BUF_SIZE);
-      if(result_table[0] != CMD_SUCCESS)
-      {
-        while(1); /* No way to recover. Just let Windows report a write failure */
-      }
-	  /* Reset byte counter and flash address */
-	  byte_ctr = 0;
-	  flash_address = 0;
+		/* We have accumulated enough bytes to trigger a flash write */
+		find_erase_prepare_sector(SystemCoreClock/1000, (unsigned)flash_address);
+		if(result_table[0] != CMD_SUCCESS)
+			return result_table[0];
+
+		write_data(SystemCoreClock/1000,(unsigned)flash_address,(unsigned *)flash_buf,FLASH_BUF_SIZE);
+		if(result_table[0] != CMD_SUCCESS)
+			return result_table[0];
+
+		/* Reset byte counter and flash address */
+		byte_ctr = 0;
+		flash_address = 0;
 	}
-    return(CMD_SUCCESS);
+	return(CMD_SUCCESS);
 }
 
 void find_erase_prepare_sector(unsigned cclk, unsigned flash_address)

@@ -66,8 +66,8 @@
  * size used by SCSI layer of LPCUSB
  */
 
-#define SECTOR_START(sector)	((sector < 16)?(sector * 0x1000):((sector - 14) * 8000))
-#define SECTOR_END(sector)		((sector < 16)?((sector * 0x1000) + 0xFFF):(((sector - 14) * 8000) + 0x7FFF))
+#define SECTOR_START(sector)	((sector < 16)?( sector * 0x1000)         :( (sector - 14) * 0x8000)          )
+#define SECTOR_END(sector)		((sector < 16)?((sector * 0x1000) + 0xFFF):(((sector - 14) * 0x8000) + 0x7FFF))
 
 #define FLASH_BUF_SIZE 512
 #define USER_FLASH_START SECTOR_START(USER_START_SECTOR)
