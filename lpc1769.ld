@@ -32,6 +32,7 @@ SEARCH_DIR(.)
 MEMORY
 {
 	rom (rx)  : ORIGIN =   0, LENGTH = 16K /* we are the bootloader */
+	userom(rx): ORIGIN = 16k, LENGTH = (512k - 16k)
 /* 	rom (rx)  : ORIGIN = 16K, LENGTH = (512K - 16K) /* Bootloader uses first 16Kbytes of flash memory */
 	/* rom (rx)  : ORIGIN = 0, LENGTH = 512K /**/
 	ram (rwx) : ORIGIN = 0x10000000, LENGTH =  32K - 32 /* don't use last 32 bytes- they're used by IAP during flash programming */
@@ -189,6 +190,9 @@ SECTIONS
   __cs3_region_zero_size_ram = _end - _edata;
   __cs3_region_size_ram = LENGTH(ram);
   __cs3_region_num = 1;
+
+  _user_flash_start = ORIGIN(userom);
+  _user_flash_size  = LENGTH(userom);
 
   .stab 0 (NOLOAD) : { *(.stab) }
   .stabstr 0 (NOLOAD) : { *(.stabstr) }
