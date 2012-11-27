@@ -1,5 +1,3 @@
-#ifdef __LPC17XX__
-
 /**************************************************************************//**
  * @file     system_LPC17xx.c
  * @brief    CMSIS Cortex-M3 Device Peripheral Access Layer Source File
@@ -23,10 +21,6 @@
  * CONSEQUENTIAL DAMAGES, FOR ANY REASON WHATSOEVER.
  *
  ******************************************************************************/
-
-
-#include <stdint.h>
-#include "LPC17xx.h"
 
 
 /** @addtogroup LPC17xx_System
@@ -298,14 +292,56 @@
 #define SCS_Val               0x00000020
 #define CLKSRCSEL_Val         0x00000001
 #define PLL0_SETUP            1
-#define PLL0CFG_Val           0x00050063
+#define PLL0CFG_Val           0x00000013
+// F_CRYSTAL = 12MHz
+// MSEL0 = 0x13
+// NSEL0 = 0x0
+// M = MSEL + 1
+// N = NSEL + 1
+// F_PLL0 = 2 * M * 12MHz / N
+// F_PLL0 = 480MHz
+// F_cpu = F_PLL0 / CCLKCFG
+// F_cpu = 120MHz
+
 #define PLL1_SETUP            1
 #define PLL1CFG_Val           0x00000023
+
 #define CCLKCFG_Val           0x00000003
-#define USBCLKCFG_Val         0x00000000
+
+#define USBCLKCFG_Val         0x00000009
+
 #define PCLKSEL0_Val          0x00000000
 #define PCLKSEL1_Val          0x00000000
-#define PCONP_Val             0x042887DE
+
+#define PCTIM0		(1<<1)
+#define PCTIM1		(1<<2)
+#define PCUART0	(1<<3)
+#define PCUART1	(1<<4)
+#define PCPWM1		(1<<6)
+#define PCI2C0		(1<<7)
+#define PCSPI			(1<<8)
+#define PCRTC		(1<<9)
+#define PCSSP1		(1<<10)
+#define PCADC		(1<<12)
+#define PCCAN1		(1<<13)
+#define PCCAN2		(1<<14)
+#define PCGPIO		(1<<15)
+#define PCRIT			(1<<16)
+#define PCMCPWM	(1<<17)
+#define PCQEI			(1<<18)
+#define PCI2C1		(1<<19)
+#define PCSSP0		(1<<21)
+#define PCTIM2		(1<<22)
+#define PCTIM3		(1<<23)
+#define PCUART2	(1<<24)
+#define PCUART3	(1<<25)
+#define PCI2C2		(1<<26)
+#define PCI2S			(1<<27)
+#define PCGPDMA	(1<<29)
+#define PCENET		(1<<30)
+#define PCUSB		(1<<31)
+#define PCONP_Val             (PCUART0 | PCSSP0 | PCSSP1 | PCGPIO | PCUSB)
+
 #define CLKOUTCFG_Val         0x00000000
 
 
@@ -323,7 +359,7 @@
 // </e>
 */
 #define FLASH_SETUP           1
-#define FLASHCFG_Val          0x0000303A
+#define FLASHCFG_Val          0x0000503A
 
 /*
 //-------- <<< end of configuration section >>> ------------------------------
@@ -423,6 +459,11 @@
  /**
   * @}
   */
+
+ #ifdef __LPC17XX__
+
+ #include <stdint.h>
+ #include "LPC17xx.h"
 
 
 /** @addtogroup LPC17xx_System_Public_Variables  LPC17xx System Public Variables
