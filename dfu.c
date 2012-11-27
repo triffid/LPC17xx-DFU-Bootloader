@@ -11,6 +11,8 @@
 
 #include "string.h"
 
+#define DFU_BLOCK_SIZE 512
+
 typedef struct
 __attribute__ ((packed))
 {
@@ -69,7 +71,7 @@ DFU_APP_Descriptor desc =
 		DT_DFU_FUNCTIONAL_DESCRIPTOR,
 		DFU_BMATTRIBUTES_WILLDETACH | DFU_BMATTRIBUTES_CANDOWNLOAD | DFU_BMATTRIBUTES_CANUPLOAD,
 		500,						// wDetachTimeout - time in milliseconds between receiving detach request and issuing usb reset
-		512,						// wTransferSize - the size of each packet of firmware sent from the host via control transfers
+		DFU_BLOCK_SIZE,				// wTransferSize - the size of each packet of firmware sent from the host via control transfers
 		DFU_VERSION_1_1	// bcdDFUVersion
 	},
 	{
@@ -139,7 +141,7 @@ DFU_STATUS_t DFU_status = {
 	0
 };
 
-uint8_t block_buffer[512];
+uint8_t block_buffer[DFU_BLOCK_SIZE];
 const uint8_t * flash_p;
 
 extern const uint8_t _user_flash_start;
@@ -191,6 +193,7 @@ void DFU_Download(CONTROL_TRANSFER *control)
 void DFU_Upload(CONTROL_TRANSFER *control)
 {
 	current_state = dfuUPLOADIDLE;
+	flash_p = &_user_flash_start + (control->setup.wValue * DFU_BLOCK_SIZE);
 	memcpy(block_buffer, flash_p, control->setup.wLength);
 	control->buffer = block_buffer;
 	control->bufferlen = control->setup.wLength;
