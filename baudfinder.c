@@ -1,3 +1,8 @@
+/*
+ * Run with:
+ * gcc -std=gnu99 -ICMSISv2p00_LPC17xx/src -lm -o baudfinder baudfinder.c && ./baudfinder
+ */
+
 #ifndef __LPC17XX__
 
 #include "stdio.h"
@@ -5,8 +10,6 @@
 #include "stdint.h"
 
 #include "math.h"
-
-uint32_t target_baud = 115200;
 
 typedef struct {
 	uint32_t	baud;
