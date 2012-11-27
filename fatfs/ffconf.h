@@ -14,7 +14,7 @@
 / Functions and Buffer Configurations
 /----------------------------------------------------------------------------*/
 
-#define	_FS_TINY		0	/* 0:Normal or 1:Tiny */
+#define	_FS_TINY		1	/* 0:Normal or 1:Tiny */
 /* When _FS_TINY is set to 1, FatFs uses the sector buffer in the file system
 /  object instead of the sector buffer in the individual file object for file
 /  data transfer. This reduces memory consumption 512 bytes each file object. */
@@ -90,7 +90,7 @@
 */
 
 
-#define	_USE_LFN	1		/* 0 to 3 */
+#define	_USE_LFN	0		/* 0 to 3 */
 #define	_MAX_LFN	255		/* Maximum LFN length to handle (12 to 255) */
 /* The _USE_LFN option switches the LFN support.
 /
@@ -143,7 +143,7 @@
 / is tied to the partitions listed in VolToPart[]. */
 
 
-#define	_USE_ERASE	1	/* 0:Disable or 1:Enable */
+#define	_USE_ERASE	0	/* 0:Disable or 1:Enable */
 /* To enable sector erase feature, set _USE_ERASE to 1. CTRL_ERASE_SECTOR command
 /  should be added to the disk_ioctl functio. */
 

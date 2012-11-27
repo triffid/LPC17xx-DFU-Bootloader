@@ -25,6 +25,8 @@
 /   1258  Vietnam (OEM, Windows)
 */
 
+#if 0
+
 #include "../ff.h"
 
 
@@ -538,3 +540,5 @@ WCHAR ff_wtoupper (	/* Upper converted character */
 
 	return tbl_lower[i] ? tbl_upper[i] : chr;
 }
+
+#endif /* 0 */
