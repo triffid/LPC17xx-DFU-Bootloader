@@ -52,6 +52,87 @@
 
 static Status uart_set_divisors(LPC_UART_TypeDef *UARTx, uint32_t baudrate);
 
+uint32_t const uabs(const uint32_t a, const uint32_t b)
+{
+	if (a>=b)
+		return a-b;
+	return b-a;
+}
+
+uint32_t const calc_baud(uint32_t pclk, uint32_t dl, uint32_t divaddval, uint32_t mulval)
+{
+	// 65535 * 14 * 16 is less than 2**24 so we have a spare 8 bits of precision
+	// we can use them to increase our accuracy quite a bit
+	// pclk is less than 2**27, so we have 5 spare bits for the numerator
+	// this means we can do (numerator * 2**5) / (denominator * 2**8) * 2**3 to get the highest accuracy possible with 32 bit integers
+	// denominator is 16 * (dl * (1 + (divadd / mul)) which can be expanded to
+	// dl*16 + dl*16*divadd/mul which gives far more opportunity for using all our precision
+	uint32_t dx = ((dl * 16 * 32 * 8) + ((dl * 16 * divaddval * 32 * 8) / mulval));
+	return ((pclk * 32) / dx) * 8;
+}
+
+typedef struct {
+	uint32_t	baud;
+	uint8_t	pd;
+	uint16_t	dl;
+	uint32_t	dx;
+	uint8_t	mulval;
+	uint8_t	divaddval;
+} uart_regs;
+
+int baud_space_search(uint32_t target_baud, uart_regs *r)
+{
+	uint32_t pd, dl, mulval, divaddval;
+	int i = 0;
+	for (pd = ((target_baud < 1000000)?3:1); pd < 4; pd--)
+	{
+		uint32_t pclk = SystemCoreClock / (1<<pd);
+		for (mulval = 1; mulval < 16; mulval++)
+		{
+			for (divaddval = 0; divaddval < mulval; divaddval++)
+			{
+				i++;
+				// baud = pclk / (16 * dl * (1 + (DivAdd / Mul))
+				// solving for dl, we get dl = mul * pclk / (16 * baud * (divadd + mul))
+				// we double the numerator, add 1 to the result then halve to effectivel round up when dl % 1 > 0.5
+				dl = (((2 * mulval * pclk) / (16 * target_baud * (divaddval + mulval))) + 1) / 2;
+
+				// dl is a 16 bit field, if result needs more then we search again
+				if (dl > 65535)
+					continue;
+
+				// datasheet says if DLL==DLM==0, then 1 is used instead since divide by zero is ungood
+				if (dl == 0)
+					dl = 1;
+
+				// datasheet says if DIVADDVAL > 0 then DL must be >= 2
+				if ((divaddval > 0) && (dl < 2))
+					dl = 2;
+
+				uint32_t b = calc_baud(pclk, dl, divaddval, mulval);
+				if (uabs(b, target_baud) < uabs(r->baud, target_baud))
+				{
+					r->baud      = b;
+					r->pd        = pd;
+					r->dl        = dl;
+					r->dx       = ((dl * 16 * 32 * 8) + ((dl * 16 * divaddval * 32 * 8) / mulval));
+					r->mulval    = mulval;
+					r->divaddval = divaddval;
+					// 					printf("\t\t{%7d,%4d,%6d,%3d,%3d},\t// Actual baud: %7d, error %c%4.2f%%, %d iterations\n", target_baud, 1<<best.pd, best.dl, best.mulval, best.divaddval, b, ((b > target_baud)?'+':((b < target_baud)?'-':' ')), (uabs(target_baud, b) * 100.0) / target_baud, i);
+					if (b == target_baud)
+						return i;
+					// within 0.08%
+						if ((uabs(r->baud, target_baud) * 1536 / target_baud) < 1)
+							return i;
+				}
+			}
+		}
+		// don't check higher pclk if we're within 0.5%
+		if ((uabs(r->baud, target_baud) * 200 / target_baud) < 1)
+			return i;
+	}
+	return i;
+}
 
 /** ********************************************************************
  * @brief		Determines best dividers to get a target clock rate
@@ -69,102 +150,133 @@ static Status uart_set_divisors(LPC_UART_TypeDef *UARTx, uint32_t baudrate)
 {
 	Status errorStatus = ERROR;
 
-	uint32_t uClk;
-	uint32_t calcBaudrate = 0;
-	uint32_t temp = 0;
+	uart_regs best;
 
-	uint32_t mulFracDiv, dividerAddFracDiv;
-	uint32_t diviser = 0 ;
-	uint32_t mulFracDivOptimal = 1;
-	uint32_t dividerAddOptimal = 0;
-	uint32_t diviserOptimal = 0;
-
-	uint32_t relativeError = 0;
-	uint32_t relativeOptimalError = 100000;
-
-	/* get UART block clock */
-	if (UARTx == LPC_UART0)
-	{
-		uClk = CLKPWR_GetPCLK (CLKPWR_PCLKSEL_UART0);
-	}
-	else if (UARTx == (LPC_UART_TypeDef *)LPC_UART1)
-	{
-		uClk = CLKPWR_GetPCLK (CLKPWR_PCLKSEL_UART1);
-	}
-	else if (UARTx == LPC_UART2)
-	{
-		uClk = CLKPWR_GetPCLK (CLKPWR_PCLKSEL_UART2);
-	}
-	else if (UARTx == LPC_UART3)
-	{
-		uClk = CLKPWR_GetPCLK (CLKPWR_PCLKSEL_UART3);
-	}
-
-
-	uClk = uClk >> 4; /* div by 16 */
-	/* In the Uart IP block, baud rate is calculated using FDR and DLL-DLM registers
-	 * The formula is :
-	 * BaudRate= uClk * (mulFracDiv/(mulFracDiv+dividerAddFracDiv) / (16 * (DLL)
-	 * It involves floating point calculations. That's the reason the formulae are adjusted with
-	 * Multiply and divide method.*/
-	/* The value of mulFracDiv and dividerAddFracDiv should comply to the following expressions:
-	 * 0 < mulFracDiv <= 15, 0 <= dividerAddFracDiv <= 15 */
-	for (mulFracDiv = 1 ; mulFracDiv <= 15 ;mulFracDiv++)
-	{
-		for (dividerAddFracDiv = 0 ; dividerAddFracDiv <= 15 ;dividerAddFracDiv++)
-		{
-			temp = (mulFracDiv * uClk) / ((mulFracDiv + dividerAddFracDiv));
-
-			diviser = temp / baudrate;
-			if ((temp % baudrate) > (baudrate / 2))
-				diviser++;
-
-			if (diviser > 2 && diviser < 65536)
-			{
-				calcBaudrate = temp / diviser;
-
-				if (calcBaudrate <= baudrate)
-					relativeError = baudrate - calcBaudrate;
-				else
-					relativeError = calcBaudrate - baudrate;
-
-				if ((relativeError < relativeOptimalError))
-				{
-					mulFracDivOptimal = mulFracDiv ;
-					dividerAddOptimal = dividerAddFracDiv;
-					diviserOptimal = diviser;
-					relativeOptimalError = relativeError;
-					if (relativeError == 0)
-						break;
-				}
-			} /* End of if */
-		} /* end of inner for loop */
-		if (relativeError == 0)
-			break;
-	} /* end of outer for loop  */
-
-	if (relativeOptimalError < ((baudrate * UART_ACCEPTED_BAUDRATE_ERROR)/100))
+	baud_space_search(baudrate, &best);
+// 	uint32_t uClk;
+// 	uint32_t calcBaudrate = 0;
+// 	uint32_t temp = 0;
+//
+// 	uint32_t mulFracDiv, dividerAddFracDiv;
+// 	uint32_t diviser = 0 ;
+// 	uint32_t mulFracDivOptimal = 1;
+// 	uint32_t dividerAddOptimal = 0;
+// 	uint32_t diviserOptimal = 0;
+//
+// 	uint32_t relativeError = 0;
+// 	uint32_t relativeOptimalError = 100000;
+//
+// 	/* get UART block clock */
+// 	if (UARTx == LPC_UART0)
+// 	{
+// 		uClk = CLKPWR_GetPCLK (CLKPWR_PCLKSEL_UART0);
+// 	}
+// 	else if (UARTx == (LPC_UART_TypeDef *)LPC_UART1)
+// 	{
+// 		uClk = CLKPWR_GetPCLK (CLKPWR_PCLKSEL_UART1);
+// 	}
+// 	else if (UARTx == LPC_UART2)
+// 	{
+// 		uClk = CLKPWR_GetPCLK (CLKPWR_PCLKSEL_UART2);
+// 	}
+// 	else if (UARTx == LPC_UART3)
+// 	{
+// 		uClk = CLKPWR_GetPCLK (CLKPWR_PCLKSEL_UART3);
+// 	}
+//
+//
+// 	uClk = uClk >> 4; /* div by 16 */
+// 	/* In the Uart IP block, baud rate is calculated using FDR and DLL-DLM registers
+// 	 * The formula is :
+// 	 * BaudRate= uClk * (mulFracDiv/(mulFracDiv+dividerAddFracDiv) / (16 * (DLL)
+// 	 * It involves floating point calculations. That's the reason the formulae are adjusted with
+// 	 * Multiply and divide method.*/
+// 	/* The value of mulFracDiv and dividerAddFracDiv should comply to the following expressions:
+// 	 * 0 < mulFracDiv <= 15, 0 <= dividerAddFracDiv <= 15 */
+// 	for (mulFracDiv = 1 ; mulFracDiv <= 15 ;mulFracDiv++)
+// 	{
+// 		for (dividerAddFracDiv = 0 ; dividerAddFracDiv <= 15 ;dividerAddFracDiv++)
+// 		{
+// 			temp = (mulFracDiv * uClk) / ((mulFracDiv + dividerAddFracDiv));
+//
+// 			diviser = temp / baudrate;
+// 			if ((temp % baudrate) > (baudrate / 2))
+// 				diviser++;
+//
+// 			if (diviser > 2 && diviser < 65536)
+// 			{
+// 				calcBaudrate = temp / diviser;
+//
+// 				if (calcBaudrate <= baudrate)
+// 					relativeError = baudrate - calcBaudrate;
+// 				else
+// 					relativeError = calcBaudrate - baudrate;
+//
+// 				if ((relativeError < relativeOptimalError))
+// 				{
+// 					mulFracDivOptimal = mulFracDiv ;
+// 					dividerAddOptimal = dividerAddFracDiv;
+// 					diviserOptimal = diviser;
+// 					relativeOptimalError = relativeError;
+// 					if (relativeError == 0)
+// 						break;
+// 				}
+// 			} /* End of if */
+// 		} /* end of inner for loop */
+// 		if (relativeError == 0)
+// 			break;
+// 	} /* end of outer for loop  */
+	if ((uabs(best.baud, baudrate) * 100 / UART_ACCEPTED_BAUDRATE_ERROR) < baudrate)
+// 	if (relativeOptimalError < ((baudrate * UART_ACCEPTED_BAUDRATE_ERROR)/100))
 	{
 		if (((LPC_UART1_TypeDef *)UARTx) == LPC_UART1)
 		{
 			((LPC_UART1_TypeDef *)UARTx)->LCR |= UART_LCR_DLAB_EN;
-			((LPC_UART1_TypeDef *)UARTx)->/*DLIER.*/DLM = UART_LOAD_DLM(diviserOptimal);
-			((LPC_UART1_TypeDef *)UARTx)->/*RBTHDLR.*/DLL = UART_LOAD_DLL(diviserOptimal);
+			((LPC_UART1_TypeDef *)UARTx)->/*DLIER.*/DLM = UART_LOAD_DLM(best.dl);
+			((LPC_UART1_TypeDef *)UARTx)->/*RBTHDLR.*/DLL = UART_LOAD_DLL(best.dl);
 			/* Then reset DLAB bit */
 			((LPC_UART1_TypeDef *)UARTx)->LCR &= (~UART_LCR_DLAB_EN) & UART_LCR_BITMASK;
-			((LPC_UART1_TypeDef *)UARTx)->FDR = (UART_FDR_MULVAL(mulFracDivOptimal) \
-			| UART_FDR_DIVADDVAL(dividerAddOptimal)) & UART_FDR_BITMASK;
+			((LPC_UART1_TypeDef *)UARTx)->FDR = (UART_FDR_MULVAL(best.mulval) \
+				| UART_FDR_DIVADDVAL(best.divaddval)) & UART_FDR_BITMASK;
 		}
 		else
 		{
 			UARTx->LCR |= UART_LCR_DLAB_EN;
-			UARTx->/*DLIER.*/DLM = UART_LOAD_DLM(diviserOptimal);
-			UARTx->/*RBTHDLR.*/DLL = UART_LOAD_DLL(diviserOptimal);
+			UARTx->/*DLIER.*/DLM = UART_LOAD_DLM(best.dl);
+			UARTx->/*RBTHDLR.*/DLL = UART_LOAD_DLL(best.dl);
 			/* Then reset DLAB bit */
 			UARTx->LCR &= (~UART_LCR_DLAB_EN) & UART_LCR_BITMASK;
-			UARTx->FDR = (UART_FDR_MULVAL(mulFracDivOptimal) \
-			| UART_FDR_DIVADDVAL(dividerAddOptimal)) & UART_FDR_BITMASK;
+			UARTx->FDR = (UART_FDR_MULVAL(best.mulval) \
+				| UART_FDR_DIVADDVAL(best.divaddval)) & UART_FDR_BITMASK;
 		}
+
+		uint8_t pclkdiv;
+		switch (best.pd)
+		{
+			case 0:
+				pclkdiv = CLKPWR_PCLKSEL_CCLK_DIV_1;
+				break;
+			case 1:
+				pclkdiv = CLKPWR_PCLKSEL_CCLK_DIV_2;
+				break;
+			case 2:
+				pclkdiv = CLKPWR_PCLKSEL_CCLK_DIV_4;
+				break;
+			default:
+			case 3:
+				pclkdiv = CLKPWR_PCLKSEL_CCLK_DIV_8;
+				break;
+		}
+
+		if (UARTx == LPC_UART0)
+			CLKPWR_SetPCLKDiv(CLKPWR_PCLKSEL_UART0, pclkdiv);
+		if (((LPC_UART1_TypeDef *) UARTx) == LPC_UART1)
+			CLKPWR_SetPCLKDiv(CLKPWR_PCLKSEL_UART1, pclkdiv);
+		if (UARTx == LPC_UART2)
+			CLKPWR_SetPCLKDiv(CLKPWR_PCLKSEL_UART2, pclkdiv);
+		if (UARTx == LPC_UART3)
+			CLKPWR_SetPCLKDiv(CLKPWR_PCLKSEL_UART3, pclkdiv);
+
 		errorStatus = SUCCESS;
 	}
 
