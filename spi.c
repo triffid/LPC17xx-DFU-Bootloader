@@ -7,8 +7,7 @@
 
 #include <stdio.h>
 
-// typedef void (*fptr)(void);
-// fptr isr_dispatch[N_SPI_INTERRUPT_ROUTINES];
+// #define SOFT_SPI
 
 uint32_t delay;
 Pin_t miso;
@@ -136,6 +135,7 @@ uint8_t SPI_write(uint8_t data)
         while ((sspr->SR & SSP_SR_RNE) == 0);
         r = sspr->DR & 255;
     }
+#ifdef SOFT_SPI
     else {
         for (int i = 0; i < 8; i++) {
             FIO_ClearValue(sclk.port, 1UL << sclk.pin);         // clock LOW
@@ -158,6 +158,7 @@ uint8_t SPI_write(uint8_t data)
         }
         FIO_ClearValue(sclk.port, 1UL << sclk.pin);
     }
+#endif
 //     printf(" <0x%x\n", r);
     return r;
 }
