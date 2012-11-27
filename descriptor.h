@@ -70,6 +70,7 @@
 // #include "USBEndpoints.h"
 
 typedef struct
+__attribute__ ((packed))
 {
     uint8_t         bLength;                // descriptor length
     uint8_t         bDescType;              // descriptor type: see DT_* defines
@@ -77,6 +78,7 @@ typedef struct
     usbdesc_base;
 
 typedef struct
+__attribute__ ((packed))
 {
     uint8_t         bLength;                // Device descriptor length (0x12)
     uint8_t         bDescType;              // DT_DEVICE (0x01)
@@ -95,7 +97,8 @@ typedef struct
 }
     usbdesc_device;
 
-typedef struct __attribute__ ((packed))
+typedef struct
+__attribute__ ((packed))
 {
     uint8_t         bLength;                // Configuration Descriptor Length (0x09)
     uint8_t         bDescType;              // DT_CONFIGURATION (0x02)
@@ -108,7 +111,8 @@ typedef struct __attribute__ ((packed))
 }
     usbdesc_configuration;
 
-typedef struct __attribute__ ((packed))
+typedef struct
+__attribute__ ((packed))
 {
     uint8_t         bLength;                // Interface Descriptor Length (0x09)
     uint8_t         bDescType;              // DT_INTERFACE (0x04)
@@ -121,15 +125,11 @@ typedef struct __attribute__ ((packed))
     uint8_t         bInterfaceProtocol;     // Protocol Code
 
     uint8_t         iInterface;             // Index of String Descriptor Describing this interface
-    uint8_t         selectedAlternate;      // the currently selected alternate for this group of interfaces. Set on alternate 0 for easy lookups
-    uint8_t         dummy1;                 // pad to 32 bit boundary
-    uint8_t         dummy2;                 // pad to 32 bit boundary
-
-//     USB_Class_Receiver *classReceiver;      // who do we call when we receive a setup packet for this interface?
 }
     usbdesc_interface;
 
-typedef struct __attribute__ ((packed))
+typedef struct
+__attribute__ ((packed))
 {
     uint8_t         bLength;                // Endpoint Descriptor Length (0x07)
     uint8_t         bDescType;              // DT_ENDPOINT (0x05)
@@ -138,13 +138,11 @@ typedef struct __attribute__ ((packed))
 
     uint16_t        wMaxPacketSize;         // Maximum Packet Size this endpoint is capable of sending or receiving
     uint8_t         bInterval;              // Interval for polling endpoint data transfers. Value in frame counts. Ignored for Bulk & Control Endpoints. Isochronous must equal 1 and field may range from 1 to 255 for interrupt endpoints.
-    uint8_t         dummy;                  // pad to 32 bit boundary
-
-//     USB_Endpoint_Receiver *epReceiver;      // Who do we call when something happens on this endpoint?
 }
     usbdesc_endpoint;
 
-typedef struct __attribute__ ((packed))
+typedef struct
+__attribute__ ((packed))
 {
     uint8_t         bLength;                // String Descriptor Length (2 + 2*nLang)
     uint8_t         bDescType;              // DT_STRING (0x03)
@@ -152,7 +150,8 @@ typedef struct __attribute__ ((packed))
 }
     usbdesc_language;
 
-typedef struct __attribute__ ((packed))
+typedef struct
+__attribute__ ((packed))
 {
     uint8_t         bLength;                // 2 + strlen
     uint8_t         bDescType;              // DT_STRING (0x03)
@@ -161,5 +160,7 @@ typedef struct __attribute__ ((packed))
     usbdesc_string;
 
 #define usbdesc_string_l(l) struct __attribute__ ((packed)) { uint8_t bLength; uint8_t bDescType; uint16_t str[l]; }
+
+#define usbstring(size, string) { (2 + (2 * (size))), DT_STRING, u ## string }
 
 #endif /* _DESCRIPTOR_H */
