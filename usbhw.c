@@ -72,7 +72,7 @@ int usb_read_packet(uint8_t bEP, void *buffer, int buffersize)
 		}
 	}
 	if (LPC_USB->USBCtrl & RD_EN)
-	i = LPC_USB->USBRxPLen;
+		i = LPC_USB->USBRxPLen;
 	__enable_irq();
 	return i;
 }

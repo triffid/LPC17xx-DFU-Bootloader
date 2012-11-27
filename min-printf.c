@@ -119,11 +119,6 @@ int vfprintf(int fd, const char *format, va_list args)
 			{
 				case 's':
 				{
-// 					const char *s = va_arg(args, const char *);
-// 					int l = strlen(s);
-// 					print0s(min_length - l);
-// 					length += min_length - l;
-// 					length += _puts(0, s);
 					length += _puts(fd, va_arg(args, const char *));
 					j = 0;
 					break;
@@ -136,25 +131,12 @@ int vfprintf(int fd, const char *format, va_list args)
 					break;
 				case 'u':
 					if (j <= 4)
-					{
-// 						_puts(0, "uint_write\n");
 						_uint_write(va_arg(args, uint32_t));
-// 						_puts(0, "bufp: ");
-// 						_write(0, "0123456789" + (bufp % 10), 1);
-// 						_write(fd, printf_buf, bufp);
-// 						length += bufp;
-// 						bufp = 0;
-					}
 					j = 0;
 					break;
 				case 'd':
 					if (j <= 4)
-					{
 						_int_write(va_arg(args, int32_t));
-// 						_write(fd, printf_buf, bufp);
-// 						length += bufp;
-// 						bufp = 0;
-					}
 					j = 0;
 					break;
 				case 'c':
@@ -165,42 +147,20 @@ int vfprintf(int fd, const char *format, va_list args)
 					break;
 				case 'x':
 					if (j <= 4)
-					{
 						_hex_write(va_arg(args, uint32_t));
-// 						_write(fd, printf_buf, bufp);
-// 						length += bufp;
-// 						bufp = 0;
-					}
 					j = 0;
 					break;
 				case 'p':
 					_write(0, "0x", 2);
-// 					if (min_length > 2)
-// 						min_length -= 2;
-// 					else
-// 						min_length = 0;
 					_hex_write(va_arg(args, uint32_t));
-// 					_write(fd, printf_buf, bufp);
-// 					length += bufp;
-// 					bufp = 0;
 					j = 0;
 					break;
 				default:
-// 					if (c >= '0' && c <= '9')
-// 					{
-// 						min_length = (min_length * 10) + (c - '0');
-// 					}
-// 					else
-// 					{
-// 						_write(fd, "%", 1);
-// 						_write(fd, &c, 1);
-// 						length += 2;
-						printf_buf[0] = '%';
-						printf_buf[1] = c;
-						printf_buf[2] = 0;
-						bufp = 2;
-						j = 0;
-// 					}
+					printf_buf[0] = '%';
+					printf_buf[1] = c;
+					printf_buf[2] = 0;
+					bufp = 2;
+					j = 0;
 					break;
 			}
 			if (bufp)

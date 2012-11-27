@@ -47,11 +47,3 @@ void EP0setup()
 		}
 	}
 }
-
-void EP0in()
-{
-}
-
-void EP0out()
-{
-}
