@@ -70,7 +70,7 @@ int _int_write(int32_t i)
 
 int _hex_write(uint32_t i)
 {
-	int length;
+	int length = 0;
 	int q;
 	const char *alpha = "0123456789ABCDEF";
 	if (i) {

@@ -44,6 +44,12 @@ typedef enum {
 	UART_TX = P0_2,
 	UART_RX = P0_3,
 
+	LED1 = P1_18,
+	LED2 = P1_19,
+	LED3 = P1_20,
+	LED4 = P1_21,
+	LED5 = P4_28,
+
 	// Not connected
 	NC = -1
 } PinName;
