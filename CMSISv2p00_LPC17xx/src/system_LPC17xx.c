@@ -598,11 +598,14 @@ void SystemInit (void)
   LPC_SC->FLASHCFG  = FLASHCFG_Val;
 #endif
 
+
 //  Set Vector table offset value
 #if (__RAM_MODE__==1)
-  SCB->VTOR  = 0x10000000 & 0x3FFFFF80;
+	extern uint32_t __cs3_region_start_ram;
+	SCB->VTOR  = __cs3_region_start_ram & 0x3FFFFF80;
 #else
-  SCB->VTOR  = 0x00000000 & 0x3FFFFF80;
+	extern uint32_t __cs3_region_start_rom;
+	SCB->VTOR  = __cs3_region_start_rom & 0x3FFFFF80;
 #endif
 }
 
