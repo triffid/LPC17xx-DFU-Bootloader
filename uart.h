@@ -25,6 +25,7 @@ uint32_t	UART_send(const uint8_t *buf, uint32_t buflen);
 uint32_t	UART_recv(uint8_t *buf, uint32_t buflen);
 int			UART_cansend(void);
 int			UART_canrecv(void);
+int			UART_busy(void);
 void		UART_isr(void);
 void		UART_tx_isr(void);
 void		UART_rx_isr(void);

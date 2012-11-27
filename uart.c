@@ -262,6 +262,12 @@ int UART_canrecv() {
     return RB_CANREAD(rxbuf);
 }
 
+int UART_busy() {
+	if (u->LSR & UART_LSR_TEMT)
+		return 0;
+	return RB_CANREAD(txbuf);
+}
+
 void UART_isr()
 {
     uint32_t intsrc, ls;
@@ -308,13 +314,14 @@ void UART_tx_isr() {
     while (!RB_EMPTY(txbuf))
     {
         /* Move a piece of data into the transmit FIFO */
-        if (UART_Send(u, (uint8_t *)&txbuf.data[txbuf.tail], 1, NONE_BLOCKING)){
+//         if (UART_Send(u, (uint8_t *)&txbuf.data[txbuf.tail], 1, NONE_BLOCKING)){
             /* Update transmit ring FIFO tail pointer */
 //             __BUF_INCR(txbuf.tail);
-            RB_DROP(txbuf);
-        } else {
-            break;
-        }
+			RB_POP(txbuf, u->THR);
+//             RB_DROP(txbuf);
+//         } else {
+//             break;
+//         }
     }
 
     /* If there is no more data to send, disable the transmit
@@ -337,10 +344,12 @@ void UART_rx_isr() {
 
     while(1){
         // Call UART read function in UART driver
-        r = UART_Receive(u, &c, 1, NONE_BLOCKING);
+//         r = UART_Receive(u, &c, 1, NONE_BLOCKING);
         // If data received
-        if (r){
-            /* Check if buffer is more space
+        r = u->LSR;
+        if (r & UART_LSR_RDR){
+			c = u->RBR;
+			/* Check if buffer is more space
              * If no more space, remaining character will be trimmed out
              */
             if (!RB_FULL(rxbuf)){
