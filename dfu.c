@@ -11,7 +11,7 @@
 
 #include "string.h"
 
-#define DFU_BLOCK_SIZE 512
+#define DFU_BLOCK_SIZE 64
 
 typedef struct
 __attribute__ ((packed))
@@ -159,25 +159,30 @@ void DFU_init()
 
 void DFU_GetStatus(CONTROL_TRANSFER *control)
 {
-	printf("DFU:GETSTATUS, sending %d, %d (%dms)\n", DFU_status.bStatus, DFU_status.bState, DFU_status.bwPollTimeout);
+	printf("DFU:GETSTATUS\n");
 	control->buffer = &DFU_status;
 	control->bufferlen = 6;
 }
 
 void DFU_GetState(CONTROL_TRANSFER *control)
 {
+	printf("DFU:GETSTATE\n");
 	control->buffer = &current_state;
 	control->bufferlen = 1;
 }
 
 void DFU_Download(CONTROL_TRANSFER *control)
 {
+	printf("DFU:DNLOAD\n");
 	control->buffer = block_buffer;
 	control->bufferlen = control->setup.wLength;
 
+	flash_p = (&_user_flash_start) + (control->setup.wValue * DFU_BLOCK_SIZE);
+
 	if (control->setup.wLength > 0)
 	{
-		if ((flash_p + control->setup.wLength) < ((&_user_flash_start) + ((uint32_t)(&_user_flash_size))))
+		printf("WRITE: %p\n", flash_p);
+		if ((flash_p + control->setup.wLength) <= ((&_user_flash_start) + ((uint32_t)(&_user_flash_size))))
 		{
 			current_state = dfuDNLOADSYNC;
 			DFU_status.bState = dfuDNLOADIDLE;
@@ -192,6 +197,7 @@ void DFU_Download(CONTROL_TRANSFER *control)
 
 void DFU_Upload(CONTROL_TRANSFER *control)
 {
+	printf("DFU:UPLOAD\n");
 	current_state = dfuUPLOADIDLE;
 	flash_p = &_user_flash_start + (control->setup.wValue * DFU_BLOCK_SIZE);
 	memcpy(block_buffer, flash_p, control->setup.wLength);
@@ -201,6 +207,7 @@ void DFU_Upload(CONTROL_TRANSFER *control)
 
 void DFU_ClearStatus(CONTROL_TRANSFER *control)
 {
+	printf("DFU:CLRSTATUS\n");
 	DFU_status.bStatus = OK;
 	DFU_status.bState = dfuIDLE;
 	flash_p = &_user_flash_start;
@@ -208,6 +215,7 @@ void DFU_ClearStatus(CONTROL_TRANSFER *control)
 
 void DFU_Abort(CONTROL_TRANSFER *control)
 {
+	printf("DFU:ABORT\n");
 	DFU_status.bStatus = OK;
 	DFU_status.bState = dfuIDLE;
 	flash_p = &_user_flash_start;
