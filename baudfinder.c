@@ -108,7 +108,7 @@ uint32_t find_baud(uint32_t target_baud, uint32_t SystemCoreClock)
 
 	uint32_t b = real_baud(SystemCoreClock / (1<<best.pd), best.dl, best.divaddval, best.mulval);
 // 	printf("%7d,%2d,%3d,%3d,%6d,%9d: %7d/%7d [%4.2f%%]\n", target_baud, best.pd, best.dl >> 8, best.dl & 255, best.mulval, best.divaddval, b, best.baud, (uabs(target_baud, b) * 100.0) / target_baud);
-	printf("\t\t{%7d,%4d,%6d,%3d,%3d},\t// Actual baud: %7d, error %c%4.2f%%, %d iterations\n", target_baud, 1<<best.pd, best.dl, best.mulval, best.divaddval, b, ((b > target_baud)?'+':((b < target_baud)?'-':' ')), (uabs(target_baud, b) * 100.0) / target_baud, i);
+	printf("\t\t{%7d,%4d,%6d,%3d,%3d},\t// Actual baud: %7d, error %c%4.2f%%, %d iterations\n", target_baud, best.pd, best.dl, best.mulval, best.divaddval, b, ((b > target_baud)?'+':((b < target_baud)?'-':' ')), (uabs(target_baud, b) * 100.0) / target_baud, i);
 }
 
 #include <system_LPC17xx.c>

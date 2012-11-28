@@ -154,7 +154,7 @@ typedef struct {
 static inline int baud_space_search(uint32_t target_baud, uart_regs *r)
 {
 	r->baud      = 2000000;
-	r->pd        = 1;
+	r->pd        = 0;
 	r->dl        = 3;
 	r->mulval    = 4;
 	r->divaddval = 1;
