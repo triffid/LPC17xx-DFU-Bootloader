@@ -153,12 +153,11 @@ static inline int baud_space_search(uint32_t target_baud, uart_regs *r)
 #else
 
 /* definition to expand macro then apply to pragma message */
-#define VALUE_TO_STRING(x) #x
-#define VALUE(x) VALUE_TO_STRING(x)
-#define VAR_NAME_VALUE(var) #var "="  VALUE(var)
+// #define _STR(x) #x
+// #define STR(x) _STR(x)
 
-#pragma message(VAR_NAME_VALUE(APPBAUD))
-#pragma message(VAR_NAME_VALUE(__CORE_CLK))
+// #pragma message STR(APPBAUD)
+// #pragma message STR(__CORE_CLK)
 
 static uint32_t const uabs(const uint32_t a, const uint32_t b)
 {
