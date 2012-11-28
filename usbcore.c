@@ -98,7 +98,7 @@ void requestGetConfiguration()
 
 void EP0Complete()
 {
-	printf("Complete\n");
+	printf(" Complete\n");
 	if ((control.setup.bmRequestType & 0x7C) == 0)
 	{
 	}
@@ -110,7 +110,7 @@ void EP0Complete()
 
 void EP0setup()
 {
-	printf("SETUP\n");
+// 	printf("SETUP\n");
 
 	int l;
 
@@ -120,11 +120,13 @@ void EP0setup()
 		control.buffer = control_buffer;
 		control.bufferlen = control.setup.wLength;
 
-		printf("bmRequestType: 0x%x\n", control.setup.bmRequestType);
-		printf("bRequest     : 0x%x\n", control.setup.bRequest);
-		printf("wValue       : 0x%x\n", control.setup.wValue);
-		printf("wIndex       : 0x%x\n", control.setup.wIndex);
-		printf("wLength      : 0x%x\n", control.setup.wLength);
+// 		printf("bmRequestType: 0x%x\n", control.setup.bmRequestType);
+// 		printf("bRequest     : 0x%x\n", control.setup.bRequest);
+// 		printf("wValue       : 0x%x\n", control.setup.wValue);
+// 		printf("wIndex       : 0x%x\n", control.setup.wIndex);
+// 		printf("wLength      : 0x%x\n", control.setup.wLength);
+
+		printf("S[0x%x 0x%x 0x%x 0x%x 0x%x]: ", control.setup.bmRequestType, control.setup.bRequest, control.setup.wValue, control.setup.wIndex, control.setup.wLength);
 
 		if ((control.setup.bmRequestType & 0x7C) == 0)
 		{
@@ -171,7 +173,7 @@ void EP0setup()
 
 void EP0in()
 {
-	printf("EP0IN %d (%d)\n", control.complete, control.bufferlen);
+// 	printf("EP0IN %d (%d)\n", control.complete, control.bufferlen);
 	if (control.complete == 0)
 	{
 		if (control.setup.bmRequestType_Data_Transfer_Direction == DATA_DIRECTION_DEVICE_TO_HOST)
@@ -182,9 +184,10 @@ void EP0in()
 				if (l > sizeof(control_buffer))
 					l = sizeof(control_buffer);
 				l = usb_write_packet(EP0IN, control.buffer, l);
-				printf("W:%d\n", l);
+// 				printf("W:%d\n", l);
 				control.bufferlen -= l;
 				control.buffer += l;
+				printf(":w%d", l);
 				if (control.bufferlen == 0)
 				{
 					if (l == 64)
@@ -195,12 +198,12 @@ void EP0in()
 			{
 				usb_write_packet(EP0IN, NULL, 0);
 				control.zlp = 0;
-				printf("sent ZLP\n");
+				printf(" sent ZLP,");
 			}
 		}
 		else if (control.bufferlen == 0)
 		{
-			printf("Sent ACK\n");
+			printf(" Sent ACK,");
 			usb_write_packet(EP0IN, NULL, 0);
 			control.complete = 1;
 			EP0Complete();
@@ -210,7 +213,7 @@ void EP0in()
 
 void EP0out()
 {
-	printf("EP0OUT %d (%d)\n", control.complete, control.bufferlen);
+// 	printf("EP0OUT %d (%d)\n", control.complete, control.bufferlen);
 	if (control.complete == 0)
 	{
 		if (control.setup.bmRequestType_Data_Transfer_Direction == DATA_DIRECTION_HOST_TO_DEVICE)
@@ -224,6 +227,7 @@ void EP0out()
 				{
 					control.bufferlen -= l;
 					control.buffer += l;
+					printf(":r%d", l);
 					return;
 				}
 			}
@@ -239,6 +243,7 @@ void EP0out()
 			int l = usb_read_packet(EP0OUT, NULL, 0);
 			if (l == 0)
 			{
+				printf(" Recv ACK,");
 				control.complete = 1;
 				EP0Complete();
 				return;
