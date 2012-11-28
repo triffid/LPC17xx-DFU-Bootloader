@@ -55,13 +55,6 @@ volatile uint8_t blocking;
 
 int port;
 
-
-
-// UART_UART(PinName rxpin, PinName txpin)
-// {
-//     pin_init(rxpin, txpin);
-// }
-
 void UART_init(PinName rxpin, PinName txpin, int baud)
 {
     UART_pin_init(rxpin, txpin);
@@ -130,15 +123,12 @@ void UART_pin_init(PinName rxpin, PinName txpin)
     PinCfg.Portnum = (rxpin >> 5) & 7;
     PinCfg.Pinnum = (rxpin & 0x1F);
     PINSEL_ConfigPin(&PinCfg);
-
-//     irqrouter[port] = this;
 }
 
 typedef struct {
 	uint32_t	baud;
 	uint8_t	pd;
 	uint16_t	dl;
-	// 	uint32_t	dx;
 	uint8_t	mulval;
 	uint8_t	divaddval;
 } uart_regs;
@@ -225,7 +215,6 @@ static int baud_space_search(uint32_t target_baud, uart_regs *r)
 							r->baud      = b;
 							r->pd        = pd;
 							r->dl        = dl;
-// 							r->dx       = ((dl * 16 * 32 * 8) + ((dl * 16 * divaddval * 32 * 8) / mulval));
 							r->mulval    = mulval;
 							r->divaddval = divaddval;
 							// 					printf("\t\t{%7d,%4d,%6d,%3d,%3d},\t// Actual baud: %7d, error %c%4.2f%%, %d iterations\n", target_baud, 1<<best.pd, best.dl, best.mulval, best.divaddval, b, ((b > target_baud)?'+':((b < target_baud)?'-':' ')), (uabs(target_baud, b) * 100.0) / target_baud, i);
@@ -318,43 +307,6 @@ int UART_baud(int baud)
 	u->ICR = 0;
 	u->TER |= UART_TER_TXEN;
 
-//     UART_CFG_Type UARTConfigStruct;
-//     UART_FIFO_CFG_Type UARTFIFOConfigStruct;
-//
-//     UART_ConfigStructInit(&UARTConfigStruct);
-//
-//     UARTConfigStruct.Baud_rate = baud;
-//
-//     UART_Init(u, &UARTConfigStruct);
-//
-//     UART_FIFOConfigStructInit(&UARTFIFOConfigStruct);
-//
-//     UART_FIFOConfig(u, &UARTFIFOConfigStruct);
-//
-//     UART_TxCmd(u, ENABLE);
-//
-//     UART_IntConfig(u, UART_INTCFG_RBR, ENABLE);
-//     UART_IntConfig(u, UART_INTCFG_RLS, ENABLE);
-
-
-
-//     switch (port) {
-//         case 0:
-//             c = UART0_IRQn;
-//             break;
-//         case 1:
-//             c = UART1_IRQn;
-//             break;
-//         case 2:
-//             c = UART2_IRQn;
-//             break;
-//         case 3:
-//             c = UART3_IRQn;
-//             break;
-//         default:
-//             return baud;
-//     }
-
 	if (c < 128)
 		NVIC_EnableIRQ(c);
 
@@ -362,7 +314,6 @@ int UART_baud(int baud)
 }
 
 uint32_t UART_send(const uint8_t *data, uint32_t buflen) {
-//     uint8_t *data = (uint8_t *) buf;
     uint32_t bytes = 0;
 
     // only fiddle interrupt status outside interrupt context
@@ -404,10 +355,6 @@ uint32_t UART_send(const uint8_t *data, uint32_t buflen) {
 
     return bytes;
 }
-
-// uint32_t UART_send(const char *buf, uint32_t buflen) {
-//     return send((uint8_t *) buf, buflen);
-// }
 
 uint32_t UART_recv(uint8_t *buf, uint32_t buflen) {
     uint32_t bytes = 0;
@@ -492,15 +439,7 @@ void UART_tx_isr() {
 
     while (!RB_EMPTY(txbuf))
     {
-        /* Move a piece of data into the transmit FIFO */
-//         if (UART_Send(u, (uint8_t *)&txbuf.data[txbuf.tail], 1, NONE_BLOCKING)){
-            /* Update transmit ring FIFO tail pointer */
-//             __BUF_INCR(txbuf.tail);
-			RB_POP(txbuf, u->THR);
-//             RB_DROP(txbuf);
-//         } else {
-//             break;
-//         }
+		RB_POP(txbuf, u->THR);
     }
 
     /* If there is no more data to send, disable the transmit
@@ -522,8 +461,6 @@ void UART_rx_isr() {
     uint32_t r;
 
     while(1){
-        // Call UART read function in UART driver
-//         r = UART_Receive(u, &c, 1, NONE_BLOCKING);
         // If data received
         r = u->LSR;
         if (r & UART_LSR_RDR){
@@ -532,8 +469,6 @@ void UART_rx_isr() {
              * If no more space, remaining character will be trimmed out
              */
             if (!RB_FULL(rxbuf)){
-//                 rxbuf.data[rxbuf.head] = tmpc;
-//                 __BUF_INCR(rxbuf.head);
                 RB_PUSH(rxbuf, c);
             }
         }
