@@ -134,6 +134,42 @@ void UART_pin_init(PinName rxpin, PinName txpin)
 //     irqrouter[port] = this;
 }
 
+typedef struct {
+	uint32_t	baud;
+	uint8_t	pd;
+	uint16_t	dl;
+	// 	uint32_t	dx;
+	uint8_t	mulval;
+	uint8_t	divaddval;
+} uart_regs;
+
+// prevent system_LPC17xx from polluting our namespace
+#undef __LPC17XX__
+// pull in system_LPC17xx so we can see __CORE_CLK
+#include <system_LPC17xx.c>
+#define __LPC17XX__
+
+// check if we can use precalculated values
+#if ((defined APPBAUD) && (__CORE_CLK == 120000000) && (APPBAUD == 2000000))
+static inline int baud_space_search(uint32_t target_baud, uart_regs *r)
+{
+	r->baud      = 2000000;
+	r->pd        = 1;
+	r->dl        = 3;
+	r->mulval    = 4;
+	r->divaddval = 1;
+	return 0;
+}
+#else
+
+/* definition to expand macro then apply to pragma message */
+#define VALUE_TO_STRING(x) #x
+#define VALUE(x) VALUE_TO_STRING(x)
+#define VAR_NAME_VALUE(var) #var "="  VALUE(var)
+
+#pragma message(VAR_NAME_VALUE(APPBAUD))
+#pragma message(VAR_NAME_VALUE(__CORE_CLK))
+
 static uint32_t const uabs(const uint32_t a, const uint32_t b)
 {
 	if (a>=b)
@@ -152,15 +188,6 @@ static uint32_t const calc_baud(uint32_t pclk, uint32_t dl, uint32_t divaddval, 
 	uint32_t dx = ((dl * 16 * 32 * 8) + ((dl * 16 * divaddval * 32 * 8) / mulval));
 	return ((pclk * 32) / dx) * 8;
 }
-
-typedef struct {
-	uint32_t	baud;
-	uint8_t	pd;
-	uint16_t	dl;
-	uint32_t	dx;
-	uint8_t	mulval;
-	uint8_t	divaddval;
-} uart_regs;
 
 static int baud_space_search(uint32_t target_baud, uart_regs *r)
 {
@@ -198,7 +225,7 @@ static int baud_space_search(uint32_t target_baud, uart_regs *r)
 							r->baud      = b;
 							r->pd        = pd;
 							r->dl        = dl;
-							r->dx       = ((dl * 16 * 32 * 8) + ((dl * 16 * divaddval * 32 * 8) / mulval));
+// 							r->dx       = ((dl * 16 * 32 * 8) + ((dl * 16 * divaddval * 32 * 8) / mulval));
 							r->mulval    = mulval;
 							r->divaddval = divaddval;
 							// 					printf("\t\t{%7d,%4d,%6d,%3d,%3d},\t// Actual baud: %7d, error %c%4.2f%%, %d iterations\n", target_baud, 1<<best.pd, best.dl, best.mulval, best.divaddval, b, ((b > target_baud)?'+':((b < target_baud)?'-':' ')), (uabs(target_baud, b) * 100.0) / target_baud, i);
@@ -216,6 +243,7 @@ static int baud_space_search(uint32_t target_baud, uart_regs *r)
 	}
 	return i;
 }
+#endif
 
 int UART_baud(int baud)
 {
@@ -224,7 +252,7 @@ int UART_baud(int baud)
     RB_ZERO(txbuf);
     RB_ZERO(rxbuf);
 
-	uart_regs r = { 0, 0, 0, 0, 0, 0 };
+	uart_regs r = { 0, 0, 0, 0, 0 };
 
 	baud_space_search(baud, &r);
 
