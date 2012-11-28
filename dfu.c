@@ -11,7 +11,7 @@
 
 #include "string.h"
 
-#define DFU_BLOCK_SIZE 64
+#define DFU_BLOCK_SIZE 512
 
 typedef struct
 __attribute__ ((packed))
@@ -200,9 +200,18 @@ void DFU_Upload(CONTROL_TRANSFER *control)
 	printf("DFU:UPLOAD\n");
 	current_state = dfuUPLOADIDLE;
 	flash_p = &_user_flash_start + (control->setup.wValue * DFU_BLOCK_SIZE);
-	memcpy(block_buffer, flash_p, control->setup.wLength);
-	control->buffer = block_buffer;
-	control->bufferlen = control->setup.wLength;
+	if ((flash_p + control->setup.wLength) <= ((&_user_flash_start) + ((uint32_t)(&_user_flash_size))))
+	{
+		memcpy(block_buffer, flash_p, control->setup.wLength);
+		control->buffer = block_buffer;
+		control->bufferlen = control->setup.wLength;
+	}
+	else
+	{
+		printf("Upload Complete!\n");
+		control->bufferlen = 0;
+		control->zlp = 1;
+	}
 }
 
 void DFU_ClearStatus(CONTROL_TRANSFER *control)
