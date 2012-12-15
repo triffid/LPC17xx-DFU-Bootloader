@@ -140,19 +140,28 @@ int usb_read_packet(uint8_t bEP, void *buffer, int buffersize)
 
 int usb_write_packet(uint8_t bEP, void *data, int packetlen)
 {
-	int i;
+	int i = 0;
 	uint8_t *d = (uint8_t *) data;
 	__disable_irq();
 	LPC_USB->USBCtrl = WR_EN | ((bEP & 0xF) << 2);
 	LPC_USB->USBTxPLen = packetlen;
-	for (i = 0;(LPC_USB->USBCtrl & WR_EN);)
+	if (packetlen)
 	{
-		LPC_USB->USBTxData = ((d[0]) << 0) | ((d[1]) << 8) | ((d[2]) << 16) | ((d[3]) << 24);
-		d += 4;
-		i += 4;
+		for (i = 0;(LPC_USB->USBCtrl & WR_EN) && (i < packetlen);)
+		{
+			// 		printf("[%x]",d);
+			LPC_USB->USBTxData = ((d[0]) << 0) | ((d[1]) << 8) | ((d[2]) << 16) | ((d[3]) << 24);
+			d += 4;
+			i += 4;
+		}
+	}
+	else
+	{
+		LPC_USB->USBTxData = 0;
 	}
 	SIE_SelectEndpoint(bEP);
 	SIE_ValidateBuffer();
+	__ISB();
 	__enable_irq();
 	if (i > packetlen)
 		return packetlen;
@@ -217,18 +226,18 @@ void usb_task()
 		if (st & EP(EP0OUT))
 		{
 			int st;
-			if ((st = SIE_SelectEndpointClearInterrupt(EP0OUT)) & SIE_EP_STP)
+			if ((st = SIE_SelectEndpointClearInterrupt(EP0OUT)) & SIE_EP_STP) // SETUP packet
 			{
 // 				printf("EP0SETUP_ST: 0x%x\n", st);
 				// this is a setup packet
 				EP0setup();
 			}
-			else if (st & SIE_EP_FE)
+			else if (st & SIE_EP_FE) // OUT endpoint and FE = 1 (buffer has data)
 			{
 // 				printf("EP0OUT_ST: 0x%x\n", st);
 				EP0out();
 			}
-			else
+			else // EP0OUT, FE = 0 (no data) - why are we interrupting?
 			{
 				uint8_t b[8];
 				int l = usb_read_packet(EP0OUT, b, 8);
@@ -237,8 +246,11 @@ void usb_task()
 		}
 		if (st & EP(EP0IN))
 		{
-			SIE_SelectEndpointClearInterrupt(EP0IN);
-			EP0in();
+			int st = SIE_SelectEndpointClearInterrupt(EP0IN);
+			if ((st & SIE_EP_FE) == 0)
+				EP0in();
+// 			else
+// 				printf("Interrupt on EP0IN: FE:%d ST:%d STP:%d PO:%d EPN:%d B1:%d B2:%d\n", st & 1, (st >> 1) & 1, (st >> 2) & 1, (st >> 3) & 1, (st >> 4) & 1, (st >> 5) & 1, (st >> 6) & 1);
 		}
 		if (st & ~(3UL))
 		{
@@ -251,8 +263,14 @@ void usb_task()
 			{
 				if (LPC_USB->USBEpIntSt & bitmask)
 				{
-					SIE_SelectEndpointClearInterrupt(IDX2EP(i));
-					// TODO: check for event receivers
+					int st = SIE_SelectEndpointClearInterrupt(IDX2EP(i));
+					if (
+						((i & 1) && ((st & SIE_EP_FE) == 0)) || // IN endpoint and FE = 0 (space in buffer)
+						(((i & 1) == 0) && (st & SIE_EP_FE))    // OUT endpoint and FE = 1 (buffer has data)
+						)
+					{
+						// TODO: check for event receivers
+					}
 				}
 			}
 		}
