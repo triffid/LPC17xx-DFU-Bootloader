@@ -33,6 +33,10 @@
 
 #include <stdio.h>
 
+#if !(defined DEBUG)
+#define printf(...) do {} while (0)
+#endif
+
 /// pointers for callbacks to EP1-15 both IN and OUT
 usb_callback_pointer EPcallbacks[30];
 

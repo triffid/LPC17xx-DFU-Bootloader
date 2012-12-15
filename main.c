@@ -43,6 +43,10 @@
 
 #define ISP_BTN	P2_12
 
+#if !(defined DEBUG)
+#define printf(...) do {} while (0)
+#endif
+
 FATFS	fat;
 FIL		file;
 
@@ -142,12 +146,14 @@ int main()
 	}
 
 	// grab user code reset vector
+#ifdef DEBUG
 	unsigned *p = (unsigned *)(USER_FLASH_START +4);
 	printf("Jumping to 0x%x\n", *p);
+#endif
 
 	while (UART_busy());
 	printf("Jump!\n");
-		execute_user_code();
+	execute_user_code();
 
 	printf("This should never happen\n");
 

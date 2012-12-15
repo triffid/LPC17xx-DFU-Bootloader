@@ -39,6 +39,10 @@
 
 #define DFU_BLOCK_SIZE 512
 
+#if !(defined DEBUG)
+#define printf(...) do {} while (0)
+#endif
+
 typedef struct
 __attribute__ ((packed))
 {
