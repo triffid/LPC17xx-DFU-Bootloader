@@ -41,6 +41,8 @@
 
 #include "min-printf.h"
 
+#include "lpc17xx_wdt.h"
+
 #define ISP_BTN	P2_12
 
 #if !(defined DEBUG)
@@ -139,11 +141,19 @@ int main()
 	if (SDCard_disk_initialize() == 0)
 		check_sd_firmware();
 
+	int dfu = 0;
 	if (isp_btn_pressed() == 0)
 	{
 		printf("ISP button pressed, entering DFU mode\n");
-		start_dfu();
+		dfu = 1;
 	}
+	else if (WDT_ReadTimeOutFlag()) {
+		printf("WATCHDOG reset, entering DFU mode\n");
+		dfu = 1;
+	}
+
+	if (dfu)
+		start_dfu();
 
 	// grab user code reset vector
 #ifdef DEBUG
