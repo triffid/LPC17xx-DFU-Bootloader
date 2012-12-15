@@ -47,9 +47,9 @@ __attribute__ ((packed))
 	usbdesc_interface	interface;
 	DFU_functional_descriptor dfufunc;
 	usbdesc_language lang;
-	usbdesc_string_l(12);
-	usbdesc_string_l(8);
-	usbdesc_string_l(12);
+	usbdesc_string_l(12) iManufacturer;
+	usbdesc_string_l(8) iProduct;
+	usbdesc_string_l(12) iInterface;
 	usbdesc_base endnull;
 } DFU_APP_Descriptor;
 
