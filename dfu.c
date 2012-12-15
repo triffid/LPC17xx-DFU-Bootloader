@@ -315,7 +315,8 @@ void DFU_transferComplete(CONTROL_TRANSFER *control)
 				if (control->setup.wLength > 0)
 				{
 					printf("WRITE %p\n", flash_p);
-					int r = write_flash((void *) flash_p, (char *) block_buffer, control->setup.wLength);
+					// we must pass DFU_BLOCK_SIZE to write_flash for some reason, it does not flash if we pass a smaller length
+					int r = write_flash((void *) flash_p, (char *) block_buffer, DFU_BLOCK_SIZE);
 // 					int r;
 // 					for (r = 0; r < control->setup.wLength; r++)
 // 					{
