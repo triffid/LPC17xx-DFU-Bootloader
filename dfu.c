@@ -43,6 +43,8 @@
 #define printf(...) do {} while (0)
 #endif
 
+extern void setleds(int);
+
 typedef struct
 __attribute__ ((packed))
 {
@@ -232,7 +234,7 @@ void DFU_Upload(CONTROL_TRANSFER *control)
 	flash_p = &_user_flash_start + (control->setup.wValue * DFU_BLOCK_SIZE);
 	if ((flash_p + control->setup.wLength) <= ((&_user_flash_start) + ((uint32_t)(&_user_flash_size))))
 	{
-		control->buffer = flash_p;
+		control->buffer = (uint8_t *) flash_p;
 		control->bufferlen = control->setup.wLength;
 	}
 	else
@@ -318,6 +320,7 @@ void DFU_transferComplete(CONTROL_TRANSFER *control)
 				if (control->setup.wLength > 0)
 				{
 					printf("WRITE %p\n", flash_p);
+					setleds(((uint32_t) (flash_p - 0x4000)) >> 15);
 					// we must pass DFU_BLOCK_SIZE to write_flash for some reason, it does not flash if we pass a smaller length
 					int r = write_flash((void *) flash_p, (char *) block_buffer, DFU_BLOCK_SIZE);
 // 					int r;
