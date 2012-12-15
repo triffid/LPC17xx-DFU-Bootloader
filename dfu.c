@@ -228,8 +228,7 @@ void DFU_Upload(CONTROL_TRANSFER *control)
 	flash_p = &_user_flash_start + (control->setup.wValue * DFU_BLOCK_SIZE);
 	if ((flash_p + control->setup.wLength) <= ((&_user_flash_start) + ((uint32_t)(&_user_flash_size))))
 	{
-		memcpy(block_buffer, flash_p, control->setup.wLength);
-		control->buffer = block_buffer;
+		control->buffer = flash_p;
 		control->bufferlen = control->setup.wLength;
 	}
 	else
