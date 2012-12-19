@@ -121,6 +121,8 @@ void check_sd_firmware()
 
 int main()
 {
+	WDT_Feed();
+
 	GPIO_init(ISP_BTN); GPIO_input(ISP_BTN);
 
 	GPIO_init(LED1); GPIO_output(LED1);
@@ -154,12 +156,18 @@ int main()
 		dfu = 1;
 	}
 	else if (WDT_ReadTimeOutFlag()) {
+		WDT_ClrTimeOutFlag();
 		printf("WATCHDOG reset, entering DFU mode\n");
 		dfu = 1;
 	}
 
 	if (dfu)
 		start_dfu();
+
+#ifdef WATCHDOG
+	WDT_Init(WDT_CLKSRC_IRC, WDT_MODE_RESET);
+	WDT_Start(1<<22);
+#endif
 
 	// grab user code reset vector
 #ifdef DEBUG
