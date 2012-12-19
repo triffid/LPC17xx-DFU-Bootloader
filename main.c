@@ -129,6 +129,12 @@ int main()
 	GPIO_init(LED4); GPIO_output(LED4);
 	GPIO_init(LED5); GPIO_output(LED5);
 
+	// turn off heater outputs
+	GPIO_init(P2_4); GPIO_output(P2_4); GPIO_write(P2_4, 0);
+	GPIO_init(P2_5); GPIO_output(P2_5); GPIO_write(P2_5, 0);
+	GPIO_init(P2_6); GPIO_output(P2_6); GPIO_write(P2_6, 0);
+	GPIO_init(P2_7); GPIO_output(P2_7); GPIO_write(P2_7, 0);
+
 	setleds(31);
 
 	UART_init(UART_RX, UART_TX, 2000000);
