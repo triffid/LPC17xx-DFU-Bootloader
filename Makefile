@@ -128,7 +128,7 @@ $(OUTDIR)/%.elf: $(OBJ) $(OUTDIR)/nxp.ar $(OUTDIR)/fatfs.ar
 	@echo "  LINK  " $@
 	@$(LINK) $(OSRC) -Wl,-Map=$(@:.elf=.map) -o $@ $^ $(LDFLAGS)
 
-$(OUTDIR)/%.o: %.c
+$(OUTDIR)/%.o: %.c Makefile
 	@echo "  CC    " $@
 	@$(CC) $(CFLAGS) -Wa,-adhlns=$(@:.o=.lst) -c -o $@ $<
 
@@ -136,7 +136,7 @@ $(OUTDIR)/%.o: %.c
 # 	@echo "  CXX   " $@
 # 	@$(CXX) $(CXXFLAGS) -Wa,-adhlns=$(@:.o=.lst) -c -o $@ $<
 
-$(OUTDIR)/%.o: %.S
+$(OUTDIR)/%.o: %.S Makefile
 	@echo "  AS    " $@
 	@$(CC) $(ASFLAGS) -Wa,-adhlns=$(@:.o=.lst) -c -o $@ $<
 

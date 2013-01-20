@@ -31,6 +31,12 @@
 
 #include "lpc17xx_usb.h"
 
+#include <stdio.h>
+
+#if !(defined DEBUG)
+#define printf(...) do {} while (0)
+#endif
+
 /// pointers for callbacks to EP1-15 both IN and OUT
 usb_callback_pointer EPcallbacks[30];
 
@@ -240,7 +246,8 @@ void usb_task()
 			else // EP0OUT, FE = 0 (no data) - why are we interrupting?
 			{
 				uint8_t b[8];
-				int l = usb_read_packet(EP0OUT, b, 8);
+// 				int l = usb_read_packet(EP0OUT, b, 8);
+				usb_read_packet(EP0OUT, b, 8);
 // 				printf("EP0OUT: spurious interrupt (0x%x, %d)\n", st, l);
 			}
 		}

@@ -36,6 +36,10 @@
 #define NULL ((void *) 0)
 #endif
 
+#if !(defined DEBUG)
+#define printf(...) do {} while (0)
+#endif
+
 CONTROL_TRANSFER control;
 
 void DFU_EP0in(void);

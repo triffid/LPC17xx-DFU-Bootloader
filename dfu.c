@@ -39,6 +39,12 @@
 
 #define DFU_BLOCK_SIZE 512
 
+#if !(defined DEBUG)
+#define printf(...) do {} while (0)
+#endif
+
+extern void setleds(int);
+
 typedef struct
 __attribute__ ((packed))
 {
@@ -47,9 +53,9 @@ __attribute__ ((packed))
 	usbdesc_interface	interface;
 	DFU_functional_descriptor dfufunc;
 	usbdesc_language lang;
-	usbdesc_string_l(12);
-	usbdesc_string_l(8);
-	usbdesc_string_l(12);
+	usbdesc_string_l(12) iManufacturer;
+	usbdesc_string_l(8) iProduct;
+	usbdesc_string_l(12) iInterface;
 	usbdesc_base endnull;
 } DFU_APP_Descriptor;
 
@@ -65,7 +71,7 @@ DFU_APP_Descriptor desc =
 		64,						// bMaxPacketSize
 		0x1D50,					// idVendor
 		0x6015,					// idProduct
-		0x0100,					// bcdDevice (serial number)
+		0x0030,					// bcdDevice (serial number)
 		1,							// iManufacturer
 		2,							// iProduct
 		0,							// iSerial
@@ -180,7 +186,7 @@ void DFU_init()
 {
 	usb_provideDescriptors(&desc);
 	flash_p = &_user_flash_start;
-	printf("user flash: %p\n", flash_p);
+// 	printf("user flash: %p\n", flash_p);
 }
 
 void DFU_GetStatus(CONTROL_TRANSFER *control)
@@ -207,7 +213,7 @@ void DFU_Download(CONTROL_TRANSFER *control)
 
 	if (control->setup.wLength > 0)
 	{
-		printf("WRITE: %p\n", flash_p);
+// 		printf("WRITE: %p\n", flash_p);
 		if ((flash_p + control->setup.wLength) <= ((&_user_flash_start) + ((uint32_t)(&_user_flash_size))))
 		{
 			current_state = dfuDNLOADSYNC;
@@ -228,7 +234,7 @@ void DFU_Upload(CONTROL_TRANSFER *control)
 	flash_p = &_user_flash_start + (control->setup.wValue * DFU_BLOCK_SIZE);
 	if ((flash_p + control->setup.wLength) <= ((&_user_flash_start) + ((uint32_t)(&_user_flash_size))))
 	{
-		control->buffer = flash_p;
+		control->buffer = (uint8_t *) flash_p;
 		control->bufferlen = control->setup.wLength;
 	}
 	else
@@ -314,6 +320,7 @@ void DFU_transferComplete(CONTROL_TRANSFER *control)
 				if (control->setup.wLength > 0)
 				{
 					printf("WRITE %p\n", flash_p);
+					setleds(((uint32_t) (flash_p - 0x4000)) >> 15);
 					// we must pass DFU_BLOCK_SIZE to write_flash for some reason, it does not flash if we pass a smaller length
 					int r = write_flash((void *) flash_p, (char *) block_buffer, DFU_BLOCK_SIZE);
 // 					int r;

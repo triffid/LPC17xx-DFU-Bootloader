@@ -41,7 +41,13 @@
 
 #include "min-printf.h"
 
+#include "lpc17xx_wdt.h"
+
 #define ISP_BTN	P2_12
+
+#if !(defined DEBUG)
+#define printf(...) do {} while (0)
+#endif
 
 FATFS	fat;
 FIL		file;
@@ -115,6 +121,8 @@ void check_sd_firmware()
 
 int main()
 {
+	WDT_Feed();
+
 	GPIO_init(ISP_BTN); GPIO_input(ISP_BTN);
 
 	GPIO_init(LED1); GPIO_output(LED1);
@@ -122,6 +130,12 @@ int main()
 	GPIO_init(LED3); GPIO_output(LED3);
 	GPIO_init(LED4); GPIO_output(LED4);
 	GPIO_init(LED5); GPIO_output(LED5);
+
+	// turn off heater outputs
+	GPIO_init(P2_4); GPIO_output(P2_4); GPIO_write(P2_4, 0);
+	GPIO_init(P2_5); GPIO_output(P2_5); GPIO_write(P2_5, 0);
+	GPIO_init(P2_6); GPIO_output(P2_6); GPIO_write(P2_6, 0);
+	GPIO_init(P2_7); GPIO_output(P2_7); GPIO_write(P2_7, 0);
 
 	setleds(31);
 
@@ -135,19 +149,35 @@ int main()
 	if (SDCard_disk_initialize() == 0)
 		check_sd_firmware();
 
+	int dfu = 0;
 	if (isp_btn_pressed() == 0)
 	{
 		printf("ISP button pressed, entering DFU mode\n");
-		start_dfu();
+		dfu = 1;
+	}
+	else if (WDT_ReadTimeOutFlag()) {
+		WDT_ClrTimeOutFlag();
+		printf("WATCHDOG reset, entering DFU mode\n");
+		dfu = 1;
 	}
 
+	if (dfu)
+		start_dfu();
+
+#ifdef WATCHDOG
+	WDT_Init(WDT_CLKSRC_IRC, WDT_MODE_RESET);
+	WDT_Start(1<<22);
+#endif
+
 	// grab user code reset vector
+#ifdef DEBUG
 	unsigned *p = (unsigned *)(USER_FLASH_START +4);
 	printf("Jumping to 0x%x\n", *p);
+#endif
 
 	while (UART_busy());
 	printf("Jump!\n");
-		execute_user_code();
+	execute_user_code();
 
 	printf("This should never happen\n");
 
