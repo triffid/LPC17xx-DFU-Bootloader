@@ -71,7 +71,7 @@ DFU_APP_Descriptor desc =
 		64,						// bMaxPacketSize
 		0x1D50,					// idVendor
 		0x6015,					// idProduct
-		0x0100,					// bcdDevice (serial number)
+		0x0030,					// bcdDevice (serial number)
 		1,							// iManufacturer
 		2,							// iProduct
 		0,							// iSerial
