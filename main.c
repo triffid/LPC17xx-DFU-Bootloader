@@ -119,6 +119,55 @@ void check_sd_firmware()
 	}
 }
 
+// this seems to fix an issue with handoff after poweroff
+// found here http://knowledgebase.nxp.trimm.net/showthread.php?t=2869
+static void boot(uint32_t a)
+{
+	asm("LDR SP, [%0]" : : "r"(a));
+	asm("LDR PC, [%0, #4]" : : "r"(a));
+	// never returns
+}
+
+static uint32_t delay_loop(uint32_t count)
+{
+	volatile uint32_t j, del;
+	for(j=0; j<count; ++j){
+		del=j; // volatiles, so the compiler will not optimize the loop
+	}
+	return del;
+}
+
+static void new_execute_user_code(void)
+{
+	uint32_t addr=(uint32_t)USER_FLASH_START;
+	// delay
+	delay_loop(3000000);
+	// relocate vector table
+	SCB->VTOR = (addr & 0x1FFFFF80);
+	// switch to RC generator
+	LPC_SC->PLL0CON = 0x1; // disconnect PLL0
+	LPC_SC->PLL0FEED = 0xAA;
+	LPC_SC->PLL0FEED = 0x55;
+	while (LPC_SC->PLL0STAT&(1<<25));
+	LPC_SC->PLL0CON = 0x0;    // power down
+	LPC_SC->PLL0FEED = 0xAA;
+	LPC_SC->PLL0FEED = 0x55;
+	while (LPC_SC->PLL0STAT&(1<<24));
+	LPC_SC->FLASHCFG &= 0x0fff;  // This is the default flash read/write setting for IRC
+	LPC_SC->FLASHCFG |= 0x5000;
+	LPC_SC->CCLKCFG = 0x0;     //  Select the IRC as clk
+	LPC_SC->CLKSRCSEL = 0x00;
+	LPC_SC->SCS = 0x00;		    // not using XTAL anymore
+	delay_loop(1000);
+	// reset pipeline, sync bus and memory access
+	__asm (
+		   "dmb\n"
+		   "dsb\n"
+		   "isb\n"
+		  );
+	boot(addr);
+}
+
 int main()
 {
 	WDT_Feed();
@@ -177,7 +226,7 @@ int main()
 
 	while (UART_busy());
 	printf("Jump!\n");
-	execute_user_code();
+	new_execute_user_code();
 
 	printf("This should never happen\n");
 
