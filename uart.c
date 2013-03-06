@@ -337,6 +337,24 @@ int UART_baud(int baud)
     return baud;
 }
 
+void UART_deinit() {
+	switch(port)
+	{
+		case 0:
+			NVIC_DisableIRQ(UART0_IRQn);
+			break;
+		case 1:
+			NVIC_DisableIRQ(UART1_IRQn);
+			break;
+		case 2:
+			NVIC_DisableIRQ(UART2_IRQn);
+			break;
+		case 3:
+			NVIC_DisableIRQ(UART3_IRQn);
+			break;
+	}
+}
+
 uint32_t UART_send(const uint8_t *data, uint32_t buflen) {
     uint32_t bytes = 0;
 
