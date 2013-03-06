@@ -226,7 +226,12 @@ int main()
 
 	while (UART_busy());
 	printf("Jump!\n");
+	while (UART_busy());
+	UART_deinit();
+
 	new_execute_user_code();
+
+	UART_init(UART_RX, UART_TX, 2000000);
 
 	printf("This should never happen\n");
 
