@@ -153,6 +153,12 @@ static void new_execute_user_code(void)
 	LPC_SC->PLL0FEED = 0xAA;
 	LPC_SC->PLL0FEED = 0x55;
 	while (LPC_SC->PLL0STAT&(1<<24));
+	// disable PLL1
+	LPC_SC->PLL1CON   = 0;
+	LPC_SC->PLL1FEED  = 0xAA;
+	LPC_SC->PLL1FEED  = 0x55;
+	while (LPC_SC->PLL1STAT&(1<<9));
+
 	LPC_SC->FLASHCFG &= 0x0fff;  // This is the default flash read/write setting for IRC
 	LPC_SC->FLASHCFG |= 0x5000;
 	LPC_SC->CCLKCFG = 0x0;     //  Select the IRC as clk
