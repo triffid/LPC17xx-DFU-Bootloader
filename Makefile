@@ -2,9 +2,11 @@
 #
 #
 
-APPBAUD  = 2000000
+APPBAUD  = 1000000
 
 PROJECT  = DFU-Bootloader
+
+CONSOLE  = /dev/arduino
 
 CSRC     = $(wildcard *.c)
 CXXSRC   = $(wildcard *.cpp)
@@ -91,9 +93,15 @@ clean:
 	@$(RMDIR) $(OUTDIR); true
 
 program: $(OUTDIR)/$(PROJECT).hex
-	lpc21isp $^ /dev/arduino 115200 12000
+	lpc21isp $^ $(CONSOLE) 115200 12000
 
 upload: program
+
+console:
+	@stty raw ignbrk -echo $(APPBAUD) < $(CONSOLE)
+	@echo "Press ctrl+D to exit"
+	@( cat <&3 & cat >&3 ; kill %% ) 3<>$(CONSOLE)
+
 
 # size: $(OUTDIR)/$(PROJECT).elf
 # 	@$(SIZE) $<

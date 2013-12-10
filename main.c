@@ -194,7 +194,8 @@ int main()
 
 	setleds(31);
 
-	UART_init(UART_RX, UART_TX, 2000000);
+	UART_init(UART_RX, UART_TX, APPBAUD);
+
 	printf("Bootloader Start\n");
 
 	// give SD card time to wake up
@@ -237,7 +238,7 @@ int main()
 
 	new_execute_user_code();
 
-	UART_init(UART_RX, UART_TX, 2000000);
+    UART_init(UART_RX, UART_TX, APPBAUD);
 
 	printf("This should never happen\n");
 
