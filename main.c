@@ -45,7 +45,7 @@
 
 #define ISP_BTN	P2_12
 
-#if !(defined DEBUG)
+#ifndef DEBUG_MESSAGES
 #define printf(...) do {} while (0)
 #endif
 
@@ -82,11 +82,11 @@ void start_dfu()
 void check_sd_firmware()
 {
 	int r;
-	printf("Check SD\n");
+// 	printf("Check SD\n");
 	f_mount(0, &fat);
 	if ((r = f_open(&file, firmware_file, FA_READ)) == FR_OK)
 	{
-		printf("Flashing firmware...\n");
+// 		printf("Flashing firmware...\n");
 		uint8_t buf[512];
 		unsigned int r = sizeof(buf);
 		uint32_t address = USER_FLASH_START;
@@ -100,7 +100,7 @@ void check_sd_firmware()
 
 			setleds((address - USER_FLASH_START) >> 15);
 
-			printf("\t0x%lx\n", address);
+// 			printf("\t0x%lx\n", address);
 
 			write_flash((void *) address, (char *)buf, sizeof(buf));
 			address += r;
@@ -108,14 +108,14 @@ void check_sd_firmware()
 		f_close(&file);
 		if (address > USER_FLASH_START)
 		{
-			printf("Complete!\n");
+// 			printf("Complete!\n");
 			r = f_unlink(firmware_old);
 			r = f_rename(firmware_file, firmware_old);
 		}
 	}
 	else
 	{
-		printf("open: %d\n", r);
+// 		printf("open: %d\n", r);
 	}
 }
 
@@ -226,10 +226,10 @@ int main()
 #endif
 
 	// grab user code reset vector
-#ifdef DEBUG
+// #ifdef DEBUG
 	unsigned *p = (unsigned *)(USER_FLASH_START +4);
 	printf("Jumping to 0x%x\n", *p);
-#endif
+// #endif
 
 	while (UART_busy());
 	printf("Jump!\n");
@@ -249,9 +249,6 @@ int main()
 	NVIC_SystemReset();
 }
 
-
-void __aeabi_unwind_cpp_pr0(void){}
-void __libc_init_array(void){}
 
 uint32_t get_fattime()
 {
@@ -280,22 +277,22 @@ int _write(int fd, const char *buf, int buflen)
 }
 
 void NMI_Handler() {
-	printf("NMI\n");
+// 	printf("NMI\n");
 	for (;;);
 }
 void HardFault_Handler() {
-	printf("HardFault\n");
+// 	printf("HardFault\n");
 	for (;;);
 }
 void MemManage_Handler() {
-	printf("MemManage\n");
+// 	printf("MemManage\n");
 	for (;;);
 }
 void BusFault_Handler() {
-	printf("BusFault\n");
+// 	printf("BusFault\n");
 	for (;;);
 }
 void UsageFault_Handler() {
-	printf("UsageFault\n");
+// 	printf("UsageFault\n");
 	for (;;);
 }

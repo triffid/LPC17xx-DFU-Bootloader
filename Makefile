@@ -58,7 +58,7 @@ CDEFS    = MAX_URI_LENGTH=512 __LPC17XX__ USB_DEVICE_ONLY APPBAUD=$(APPBAUD)
 FLAGS    = -O$(OPTIMIZE) -mcpu=$(MCU) -mthumb -mthumb-interwork -mlong-calls -ffunction-sections -fdata-sections -Wall -g -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
 FLAGS   += $(patsubst %,-I%,$(INC))
 FLAGS   += $(patsubst %,-D%,$(CDEFS))
-CFLAGS   = $(FLAGS) -std=gnu99 -pipe -fno-builtin-printf -fno-builtin-fprintf -fno-builtin-vfprintf
+CFLAGS   = $(FLAGS) -std=gnu99 -pipe -fno-builtin-printf -fno-builtin-fprintf -fno-builtin-vfprintf -fno-builtin-puts
 ASFLAGS  = $(FLAGS)
 CXXFLAGS = $(FLAGS) -fno-rtti -fno-exceptions -std=gnu++0x
 
