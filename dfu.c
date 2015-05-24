@@ -111,9 +111,15 @@ DFU_APP_Descriptor desc =
 		DT_LANGUAGE,
 		{ SL_USENGLISH }
 	},
+#ifndef __CC_ARM
 	usbstring(12, "SmoothieWare"),
 	usbstring(8 , "Smoothie"),
 	usbstring(12, "Smoothie DFU"),
+#else
+    { 2 + 2 * 24, DT_STRING, 'S', 'm', 'o', 'o', 't', 'h', 'i', 'e', 'W', 'a', 'r', 'e' },
+    { 2 + 2 * 8,  DT_STRING, 'S', 'm', 'o', 'o', 't', 'h', 'i', 'e' },
+    { 2 + 2 * 24, DT_STRING, 'S', 'm', 'o', 'o', 't', 'h', 'i', 'e', ' ', 'D', 'F', 'U' },
+#endif
 	{
 		0,							// bLength
 		0							// bDescType
@@ -176,8 +182,14 @@ DFU_STATUS_t DFU_status = {
 uint8_t block_buffer[DFU_BLOCK_SIZE];
 const uint8_t * flash_p;
 
+#ifndef __CC_ARM
 extern const uint8_t _user_flash_start;
 extern const uint8_t _user_flash_size;
+#else
+// static const uint32_t *_real_flash_size = (uint32_t *)0x7c000;
+const uint8_t _user_flash_start __attribute__((at(0x4000)));
+const uint8_t _user_flash_size __attribute__((at(0x7c000)));
+#endif
 
 #include "LPC17xx.h"
 #include "lpc17xx_usb.h"

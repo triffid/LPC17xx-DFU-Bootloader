@@ -34,11 +34,11 @@ static const uint8_t OXFF = 0xFF;
 
 int SDCard__cmd(int cmd, int arg);
 int SDCard__cmdx(int cmd, int arg);
-int SDCard__cmd8();
+int SDCard__cmd8(void);
 int SDCard__cmd58(uint32_t *);
-int SDCard_initialise_card();
-int SDCard_initialise_card_v1();
-int SDCard_initialise_card_v2();
+int SDCard_initialise_card(void);
+int SDCard_initialise_card_v1(void);
+int SDCard_initialise_card_v2(void);
 
 int SDCard__read(uint8_t *buffer, int length);
 int SDCard__write(const uint8_t *buffer, int length);
@@ -52,7 +52,7 @@ int SDCard__write(const uint8_t *buffer, int length);
 // int check_buffer(uint8_t *, int);
 // int end_multi_read(void);
 
-uint32_t SDCard__sd_sectors();
+uint32_t SDCard__sd_sectors(void);
 uint32_t _sectors;
 
 // SPI _spi;

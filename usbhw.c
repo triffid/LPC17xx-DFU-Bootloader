@@ -40,7 +40,7 @@
 /// pointers for callbacks to EP1-15 both IN and OUT
 usb_callback_pointer EPcallbacks[30];
 
-void usb_init()
+void usb_init(void)
 {
 	// enable USB hardware
 	LPC_SC->PCONP |= CLKPWR_PCONP_PCUSB;
@@ -61,7 +61,7 @@ void usb_init()
 	LPC_PINCON->PINSEL4 |= 0x00040000;
 }
 
-void usb_connect()
+void usb_connect(void)
 {
 	LPC_USB->USBDevIntEn = DEV_STAT | EP_SLOW;
 	usb_realise_endpoint(EP0IN, 64);
@@ -70,7 +70,7 @@ void usb_connect()
 	SIE_Connect();
 }
 
-void usb_disconnect()
+void usb_disconnect(void)
 {
 	SIE_Disconnect();
 }
@@ -184,12 +184,12 @@ void usb_ep_unstall(uint8_t bEP)
 	SIE_SetEndpointStatus(bEP, 0);
 }
 
-void usb_ep0_stall()
+void usb_ep0_stall(void)
 {
 	SIE_SetEndpointStatus(EP0OUT, SIE_EPST_CND_ST);
 }
 
-void usb_task()
+void usb_task(void)
 {
 	if (LPC_USB->USBDevIntSt & FRAME)
 	{
@@ -285,6 +285,8 @@ void usb_task()
 	}
 }
 
+#ifndef __CC_ARM
 __attribute__ ((interrupt)) void USB_IRQHandler() {
 // 	usb_task();
 }
+#endif

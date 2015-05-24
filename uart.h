@@ -18,7 +18,7 @@ typedef struct
 
 // UART_init(PinName rxpin, PinName txpin);
 void		UART_init(PinName rxpin, PinName txpin, int baud);
-void        UART_deinit();
+void        UART_deinit(void);
 void		UART_pin_init(PinName rxpin, PinName txpin);
 int			UART_baud(int baud);
 uint32_t	UART_send(const uint8_t *buf, uint32_t buflen);

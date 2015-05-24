@@ -4,8 +4,9 @@
 /*------------------------------------------------------------------------*/
 
 #include <stdlib.h>		/* ANSI memory controls */
+#ifndef __CC_ARM
 #include <malloc.h>		/* ANSI memory controls */
-
+#endif
 #include "../ff.h"
 
 
