@@ -121,14 +121,6 @@ void check_sd_firmware(void)
 
 // this seems to fix an issue with handoff after poweroff
 // found here http://knowledgebase.nxp.trimm.net/showthread.php?t=2869
-#ifndef __CC_ARM
-static void boot(uint32_t a)
-{
-	asm("LDR SP, [%0]" : : "r"(a));
-	asm("LDR PC, [%0, #4]" : : "r"(a));
-	// never returns
-}
-#else
 typedef void __attribute__((noreturn))(*exec)();
 
 static void boot(uint32_t a)
@@ -139,7 +131,6 @@ static void boot(uint32_t a)
     start = (uint32_t *)(USER_FLASH_START + 4);
     ((exec)(*start))();
 }
-#endif
 
 static uint32_t delay_loop(uint32_t count)
 {
@@ -228,7 +219,7 @@ int main(void)
 		WDT_ClrTimeOutFlag();
 		printf("WATCHDOG reset, entering DFU mode\n");
 		dfu = 1;
-	} else if (*(uint32_t *)USER_FLASH_START == 0xFF) {
+	} else if (*(uint32_t *)USER_FLASH_START == 0xFFFFFFFF) {
         printf("User flash empty, enabling DFU\n");
         dfu = 1;
     }

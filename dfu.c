@@ -116,9 +116,9 @@ DFU_APP_Descriptor desc =
 	usbstring(8 , "Smoothie"),
 	usbstring(12, "Smoothie DFU"),
 #else
-    { 2 + 2 * 24, DT_STRING, 'S', 'm', 'o', 'o', 't', 'h', 'i', 'e', 'W', 'a', 'r', 'e' },
+    { 2 + 2 * 12, DT_STRING, 'S', 'm', 'o', 'o', 't', 'h', 'i', 'e', 'W', 'a', 'r', 'e' },
     { 2 + 2 * 8,  DT_STRING, 'S', 'm', 'o', 'o', 't', 'h', 'i', 'e' },
-    { 2 + 2 * 24, DT_STRING, 'S', 'm', 'o', 'o', 't', 'h', 'i', 'e', ' ', 'D', 'F', 'U' },
+    { 2 + 2 * 12, DT_STRING, 'S', 'm', 'o', 'o', 't', 'h', 'i', 'e', ' ', 'D', 'F', 'U' },
 #endif
 	{
 		0,							// bLength
@@ -194,7 +194,7 @@ const uint8_t _user_flash_size __attribute__((at(0x7c000)));
 #include "LPC17xx.h"
 #include "lpc17xx_usb.h"
 
-void DFU_init()
+void DFU_init(void)
 {
 	usb_provideDescriptors(&desc);
 	flash_p = &_user_flash_start;
@@ -369,12 +369,12 @@ void DFU_transferComplete(CONTROL_TRANSFER *control)
 	}
 }
 
-int DFU_complete()
+int DFU_complete(void)
 {
 	return (current_state == dfuMANIFESTWAITRESET);
 }
 
-void USBEvent_busReset()
+void USBEvent_busReset(void)
 {
 	if (current_state == dfuMANIFESTWAITRESET || current_state == dfuMANIFESTSYNC ||current_state == dfuMANIFEST)
 	{
