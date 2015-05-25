@@ -64,12 +64,12 @@ void setleds(int leds)
 	GPIO_write(LED5, leds & 16);
 }
 
-int isp_btn_pressed()
+int isp_btn_pressed(void)
 {
 	return GPIO_get(ISP_BTN);
 }
 
-void start_dfu()
+void start_dfu(void)
 {
 	DFU_init();
 	usb_init();
@@ -79,7 +79,7 @@ void start_dfu()
 	usb_disconnect();
 }
 
-void check_sd_firmware()
+void check_sd_firmware(void)
 {
 	int r;
 // 	printf("Check SD\n");
@@ -121,11 +121,15 @@ void check_sd_firmware()
 
 // this seems to fix an issue with handoff after poweroff
 // found here http://knowledgebase.nxp.trimm.net/showthread.php?t=2869
+typedef void __attribute__((noreturn))(*exec)();
+
 static void boot(uint32_t a)
 {
-	asm("LDR SP, [%0]" : : "r"(a));
-	asm("LDR PC, [%0, #4]" : : "r"(a));
-	// never returns
+    uint32_t *start;
+
+    __set_MSP(*(uint32_t *)USER_FLASH_START);
+    start = (uint32_t *)(USER_FLASH_START + 4);
+    ((exec)(*start))();
 }
 
 static uint32_t delay_loop(uint32_t count)
@@ -174,7 +178,7 @@ static void new_execute_user_code(void)
 	boot(addr);
 }
 
-int main()
+int main(void)
 {
 	WDT_Feed();
 
@@ -215,7 +219,10 @@ int main()
 		WDT_ClrTimeOutFlag();
 		printf("WATCHDOG reset, entering DFU mode\n");
 		dfu = 1;
-	}
+	} else if (*(uint32_t *)USER_FLASH_START == 0xFFFFFFFF) {
+        printf("User flash empty, enabling DFU\n");
+        dfu = 1;
+    }
 
 	if (dfu)
 		start_dfu();
@@ -250,7 +257,7 @@ int main()
 }
 
 
-uint32_t get_fattime()
+DWORD get_fattime(void)
 {
 #define	YEAR	2012
 #define MONTH	11

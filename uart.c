@@ -337,7 +337,7 @@ int UART_baud(int baud)
     return baud;
 }
 
-void UART_deinit() {
+void UART_deinit(void) {
 	switch(port)
 	{
 		case 0:
@@ -422,21 +422,21 @@ uint32_t UART_recv(uint8_t *buf, uint32_t buflen) {
     return bytes;
 }
 
-int UART_cansend() {
+int UART_cansend(void) {
     return RB_CANWRITE(txbuf);
 }
 
-int UART_canrecv() {
+int UART_canrecv(void) {
     return RB_CANREAD(rxbuf);
 }
 
-int UART_busy() {
+int UART_busy(void) {
 	if (u->LSR & UART_LSR_TEMT)
 		return 0;
 	return RB_CANREAD(txbuf);
 }
 
-void UART_isr()
+void UART_isr(void)
 {
     uint32_t intsrc, ls;
 
@@ -470,7 +470,7 @@ void UART_isr()
     }
 }
 
-void UART_tx_isr() {
+void UART_tx_isr(void) {
     // Disable THRE interrupt
     UART_IntConfig(u, UART_INTCFG_THRE, DISABLE);
 
@@ -498,7 +498,7 @@ void UART_tx_isr() {
     }
 }
 
-void UART_rx_isr() {
+void UART_rx_isr(void) {
     uint8_t c;
     uint32_t r;
 
