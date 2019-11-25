@@ -54,13 +54,13 @@ void usb_provideDescriptors(void *d)
 	descriptors = (usbdesc_base *) d;
 }
 
-void requestGetStatus()
+void requestGetStatus(void)
 {
 	control_buffer[0] = control_buffer[1] = 0;
 	control.bufferlen = 2;
 }
 
-void requestGetDescriptor()
+void requestGetDescriptor(void)
 {
 	uint8_t dType = control.setup.wValue >> 8;
 	uint8_t dIndex = control.setup.wValue & 0xFF;
@@ -114,18 +114,18 @@ void requestGetDescriptor()
 	control.zlp = 1;
 }
 
-void requestSetConfiguration()
+void requestSetConfiguration(void)
 {
 	SIE_ConfigureDevice(1);
 }
 
-void requestGetConfiguration()
+void requestGetConfiguration(void)
 {
 	control_buffer[0] = 1;
 	control.bufferlen = 1;
 }
 
-void EP0Complete()
+void EP0Complete(void)
 {
 	printf(" Complete\n");
 	if ((control.setup.bmRequestType & 0x7C) == 0)
@@ -137,7 +137,7 @@ void EP0Complete()
 	}
 }
 
-void EP0setup()
+void EP0setup(void)
 {
 // 	printf("SETUP\n");
 
@@ -200,7 +200,7 @@ void EP0setup()
 // 	}
 }
 
-void EP0in()
+void EP0in(void)
 {
 // 	printf("EP0IN %d (%d)\n", control.complete, control.bufferlen);
 	if (control.complete == 0)
@@ -240,7 +240,7 @@ void EP0in()
 	}
 }
 
-void EP0out()
+void EP0out(void)
 {
 // 	printf("EP0OUT %d (%d)\n", control.complete, control.bufferlen);
 	if (control.complete == 0)

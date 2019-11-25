@@ -43,9 +43,12 @@
 
 #include "lpc17xx_wdt.h"
 
-#define ISP_BTN	P2_12
+#define PLAY_BTN    P2_12
+#define ISP_BTN	    P2_10
 
-#if !(defined DEBUG)
+#define DFU_BTN     PLAY_BTN
+
+#ifndef DEBUG_MESSAGES
 #define printf(...) do {} while (0)
 #endif
 
@@ -64,12 +67,12 @@ void setleds(int leds)
 	GPIO_write(LED5, leds & 16);
 }
 
-int isp_btn_pressed()
+int dfu_btn_pressed(void)
 {
-	return GPIO_get(ISP_BTN);
+	return GPIO_get(DFU_BTN);
 }
 
-void start_dfu()
+void start_dfu(void)
 {
 	DFU_init();
 	usb_init();
@@ -79,14 +82,14 @@ void start_dfu()
 	usb_disconnect();
 }
 
-void check_sd_firmware()
+void check_sd_firmware(void)
 {
 	int r;
-	printf("Check SD\n");
+// 	printf("Check SD\n");
 	f_mount(0, &fat);
 	if ((r = f_open(&file, firmware_file, FA_READ)) == FR_OK)
 	{
-		printf("Flashing firmware...\n");
+// 		printf("Flashing firmware...\n");
 		uint8_t buf[512];
 		unsigned int r = sizeof(buf);
 		uint32_t address = USER_FLASH_START;
@@ -100,7 +103,7 @@ void check_sd_firmware()
 
 			setleds((address - USER_FLASH_START) >> 15);
 
-			printf("\t0x%lx\n", address);
+// 			printf("\t0x%lx\n", address);
 
 			write_flash((void *) address, (char *)buf, sizeof(buf));
 			address += r;
@@ -108,24 +111,28 @@ void check_sd_firmware()
 		f_close(&file);
 		if (address > USER_FLASH_START)
 		{
-			printf("Complete!\n");
+// 			printf("Complete!\n");
 			r = f_unlink(firmware_old);
 			r = f_rename(firmware_file, firmware_old);
 		}
 	}
 	else
 	{
-		printf("open: %d\n", r);
+// 		printf("open: %d\n", r);
 	}
 }
 
 // this seems to fix an issue with handoff after poweroff
 // found here http://knowledgebase.nxp.trimm.net/showthread.php?t=2869
+typedef void __attribute__((noreturn))(*exec)();
+
 static void boot(uint32_t a)
 {
-	asm("LDR SP, [%0]" : : "r"(a));
-	asm("LDR PC, [%0, #4]" : : "r"(a));
-	// never returns
+    uint32_t *start;
+
+    __set_MSP(*(uint32_t *)USER_FLASH_START);
+    start = (uint32_t *)(USER_FLASH_START + 4);
+    ((exec)(*start))();
 }
 
 static uint32_t delay_loop(uint32_t count)
@@ -153,6 +160,12 @@ static void new_execute_user_code(void)
 	LPC_SC->PLL0FEED = 0xAA;
 	LPC_SC->PLL0FEED = 0x55;
 	while (LPC_SC->PLL0STAT&(1<<24));
+	// disable PLL1
+	LPC_SC->PLL1CON   = 0;
+	LPC_SC->PLL1FEED  = 0xAA;
+	LPC_SC->PLL1FEED  = 0x55;
+	while (LPC_SC->PLL1STAT&(1<<9));
+
 	LPC_SC->FLASHCFG &= 0x0fff;  // This is the default flash read/write setting for IRC
 	LPC_SC->FLASHCFG |= 0x5000;
 	LPC_SC->CCLKCFG = 0x0;     //  Select the IRC as clk
@@ -168,11 +181,11 @@ static void new_execute_user_code(void)
 	boot(addr);
 }
 
-int main()
+int main(void)
 {
 	WDT_Feed();
 
-	GPIO_init(ISP_BTN); GPIO_input(ISP_BTN);
+	GPIO_init(DFU_BTN); GPIO_input(DFU_BTN);
 
 	GPIO_init(LED1); GPIO_output(LED1);
 	GPIO_init(LED2); GPIO_output(LED2);
@@ -188,7 +201,8 @@ int main()
 
 	setleds(31);
 
-	UART_init(UART_RX, UART_TX, 2000000);
+	UART_init(UART_RX, UART_TX, APPBAUD);
+
 	printf("Bootloader Start\n");
 
 	// give SD card time to wake up
@@ -199,7 +213,7 @@ int main()
 		check_sd_firmware();
 
 	int dfu = 0;
-	if (isp_btn_pressed() == 0)
+	if (dfu_btn_pressed() == 0)
 	{
 		printf("ISP button pressed, entering DFU mode\n");
 		dfu = 1;
@@ -208,7 +222,10 @@ int main()
 		WDT_ClrTimeOutFlag();
 		printf("WATCHDOG reset, entering DFU mode\n");
 		dfu = 1;
-	}
+	} else if (*(uint32_t *)USER_FLASH_START == 0xFFFFFFFF) {
+        printf("User flash empty, enabling DFU\n");
+        dfu = 1;
+    }
 
 	if (dfu)
 		start_dfu();
@@ -219,10 +236,10 @@ int main()
 #endif
 
 	// grab user code reset vector
-#ifdef DEBUG
+// #ifdef DEBUG
 	unsigned *p = (unsigned *)(USER_FLASH_START +4);
 	printf("Jumping to 0x%x\n", *p);
-#endif
+// #endif
 
 	while (UART_busy());
 	printf("Jump!\n");
@@ -231,7 +248,7 @@ int main()
 
 	new_execute_user_code();
 
-	UART_init(UART_RX, UART_TX, 2000000);
+    UART_init(UART_RX, UART_TX, APPBAUD);
 
 	printf("This should never happen\n");
 
@@ -243,10 +260,7 @@ int main()
 }
 
 
-void __aeabi_unwind_cpp_pr0(void){}
-void __libc_init_array(void){}
-
-uint32_t get_fattime()
+DWORD get_fattime(void)
 {
 #define	YEAR	2012
 #define MONTH	11
@@ -273,22 +287,22 @@ int _write(int fd, const char *buf, int buflen)
 }
 
 void NMI_Handler() {
-	printf("NMI\n");
+// 	printf("NMI\n");
 	for (;;);
 }
 void HardFault_Handler() {
-	printf("HardFault\n");
+// 	printf("HardFault\n");
 	for (;;);
 }
 void MemManage_Handler() {
-	printf("MemManage\n");
+// 	printf("MemManage\n");
 	for (;;);
 }
 void BusFault_Handler() {
-	printf("BusFault\n");
+// 	printf("BusFault\n");
 	for (;;);
 }
 void UsageFault_Handler() {
-	printf("UsageFault\n");
+// 	printf("UsageFault\n");
 	for (;;);
 }

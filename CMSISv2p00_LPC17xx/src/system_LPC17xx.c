@@ -291,8 +291,8 @@
 #define CLOCK_SETUP           1
 #define SCS_Val               0x00000020
 #define CLKSRCSEL_Val         0x00000001
-#define PLL0_SETUP            1
-#define PLL0CFG_Val           0x00000013
+#define PLL0_SETUP            1            // NOT USED, see SystemInit() below
+#define PLL0CFG_Val           0x00000013   // NOT USED, see SystemInit() below
 // F_CRYSTAL = 12MHz
 // MSEL0 = 0x13
 // NSEL0 = 0x0
@@ -303,12 +303,12 @@
 // F_cpu = F_PLL0 / CCLKCFG
 // F_cpu = 120MHz
 
-#define PLL1_SETUP            1
-#define PLL1CFG_Val           0x00000023
+#define PLL1_SETUP            1           // NOT USED, see SystemInit() below
+#define PLL1CFG_Val           0x00000023  // NOT USED, see SystemInit() below
 
-#define CCLKCFG_Val           0x00000003
+#define CCLKCFG_Val           0x00000003  // NOT USED, see SystemInit() below
 
-#define USBCLKCFG_Val         0x00000009
+#define USBCLKCFG_Val         0x00000009  // NOT USED, see SystemInit() below
 
 #define PCLKSEL0_Val          0x00000000
 #define PCLKSEL1_Val          0x00000000
@@ -530,6 +530,28 @@ void SystemCoreClockUpdate (void)            /* Get Core Clock Frequency      */
 
 }
 
+
+/**
+ * Detect if chip is rated to run at 100MHz (lpc17x[0-8]) or 120MHz (lpc17x9)
+ *
+ * @param  none
+ * @return non-zero if chip is rated for 120MHz
+ *
+ * @brief  Detect max clock speed
+ */
+static int can_120MHz() {
+	#define IAP_LOCATION 0x1FFF1FF1
+	uint32_t command[1];
+	uint32_t result[5];
+	typedef void (*IAP)(uint32_t*, uint32_t*);
+	IAP iap = (IAP) IAP_LOCATION;
+
+	command[0] = 54;
+	iap(command, result);
+
+	return result[1] & 0x00100000;
+}
+
 /**
  * Initialize the system
  *
@@ -541,64 +563,104 @@ void SystemCoreClockUpdate (void)            /* Get Core Clock Frequency      */
  */
 void SystemInit (void)
 {
-#if (CLOCK_SETUP)                       /* Clock Setup                        */
-  LPC_SC->SCS       = SCS_Val;
-  if (LPC_SC->SCS & (1 << 5)) {             /* If Main Oscillator is enabled  */
-    while ((LPC_SC->SCS & (1<<6)) == 0);/* Wait for Oscillator to be ready    */
-  }
+	#if (CLOCK_SETUP)                   /* Clock Setup                        */
+	LPC_SC->SCS       = SCS_Val;
+	if (LPC_SC->SCS & (1 << 5)) {       /* If Main Oscillator is enabled      */
+		while ((LPC_SC->SCS & (1<<6)) == 0);/* Wait for Oscillator to be ready    */
+	}
 
-  LPC_SC->CCLKCFG   = CCLKCFG_Val;      /* Setup Clock Divider                */
-  /* Periphral clock must be selected before PLL0 enabling and connecting
-   * - according errata.lpc1768-16.March.2010 -
-   */
-  LPC_SC->PCLKSEL0  = PCLKSEL0_Val;     /* Peripheral Clock Selection         */
-  LPC_SC->PCLKSEL1  = PCLKSEL1_Val;
+	/* Periphral clock must be selected before PLL0 enabling and connecting
+		* - according errata.lpc1768-16.March.2010 -
+		*/
+	LPC_SC->PCLKSEL0  = PCLKSEL0_Val;   /* Peripheral Clock Selection         */
+	LPC_SC->PCLKSEL1  = PCLKSEL1_Val;
 
-#if (PLL0_SETUP)
-  LPC_SC->CLKSRCSEL = CLKSRCSEL_Val;    /* Select Clock Source for PLL0       */
+	/*
+		* PLL0 MUST be 275 - 550MHz
+		*
+		* PLL0 = Fin * M * 2 / N
+		*
+		* Fcpu = PLL0 / D
+		*
+		* PLL0CFG = (M - 1) + ((N - 1) << 16)
+		* CCLKCFG = D - 1
+		*
+		* Common combinations (assuming 12MHz crystal):
+		*
+		* |   Fcpu |--|   Fin |  M | N |   PLL0 | D | PLL0CFG | CCLKCFG |
+		*    96MHz :2*  12MHz * 12 / 1 = 288MHz / 3   0x0000B       0x2
+		*   100MHz :2*  12MHz * 25 / 2 = 300MHz / 3   0x10018       0x2
+		*   120MHz :2*  12MHz * 15 / 1 = 360MHz / 3   0x0000E       0x2
+		*
+		*/
 
-  LPC_SC->PLL0CFG   = PLL0CFG_Val;      /* configure PLL0                     */
-  LPC_SC->PLL0FEED  = 0xAA;
-  LPC_SC->PLL0FEED  = 0x55;
+	LPC_SC->CLKSRCSEL = CLKSRCSEL_Val;  /* Select Clock Source for PLL0       */
 
-  LPC_SC->PLL0CON   = 0x01;             /* PLL0 Enable                        */
-  LPC_SC->PLL0FEED  = 0xAA;
-  LPC_SC->PLL0FEED  = 0x55;
-  while (!(LPC_SC->PLL0STAT & (1<<26)));/* Wait for PLOCK0                    */
+	LPC_SC->CCLKCFG   = 0x00000002;     /* Setup CPU Clock Divider            */
 
-  LPC_SC->PLL0CON   = 0x03;             /* PLL0 Enable & Connect              */
-  LPC_SC->PLL0FEED  = 0xAA;
-  LPC_SC->PLL0FEED  = 0x55;
-  while (!(LPC_SC->PLL0STAT & ((1<<25) | (1<<24))));/* Wait for PLLC0_STAT & PLLE0_STAT */
-#endif
+	if(can_120MHz()) {
+		LPC_SC->PLL0CFG   = 0x0000000E; /* configure PLL0                     */
+		LPC_SC->PLL0FEED  = 0xAA;
+		LPC_SC->PLL0FEED  = 0x55;
+	} else {
+//     LPC_SC->PLL0CFG   = 0x0000000B;  // 96MHz
+		LPC_SC->PLL0CFG   = 0x00010018; // 100MHz
+		LPC_SC->PLL0FEED  = 0xAA;
+		LPC_SC->PLL0FEED  = 0x55;
+	}
 
-#if (PLL1_SETUP)
-  LPC_SC->PLL1CFG   = PLL1CFG_Val;
-  LPC_SC->PLL1FEED  = 0xAA;
-  LPC_SC->PLL1FEED  = 0x55;
+	LPC_SC->PLL0CON   = 0x01;           /* PLL0 Enable                        */
+	LPC_SC->PLL0FEED  = 0xAA;
+	LPC_SC->PLL0FEED  = 0x55;
+	while (!(LPC_SC->PLL0STAT & (1<<26)));/* Wait for PLOCK0                    */
 
-  LPC_SC->PLL1CON   = 0x01;             /* PLL1 Enable                        */
-  LPC_SC->PLL1FEED  = 0xAA;
-  LPC_SC->PLL1FEED  = 0x55;
-  while (!(LPC_SC->PLL1STAT & (1<<10)));/* Wait for PLOCK1                    */
+	LPC_SC->PLL0CON   = 0x03;           /* PLL0 Enable & Connect              */
+	LPC_SC->PLL0FEED  = 0xAA;
+	LPC_SC->PLL0FEED  = 0x55;
+	while (!(LPC_SC->PLL0STAT & ((1<<25) | (1<<24))));/* Wait for PLLC0_STAT & PLLE0_STAT */
 
-  LPC_SC->PLL1CON   = 0x03;             /* PLL1 Enable & Connect              */
-  LPC_SC->PLL1FEED  = 0xAA;
-  LPC_SC->PLL1FEED  = 0x55;
-  while (!(LPC_SC->PLL1STAT & ((1<< 9) | (1<< 8))));/* Wait for PLLC1_STAT & PLLE1_STAT */
-#else
-  LPC_SC->USBCLKCFG = USBCLKCFG_Val;    /* Setup USB Clock Divider            */
-#endif
-  LPC_SC->PCONP     = PCONP_Val;        /* Power Control for Peripherals      */
+	/*
+		* USBCLK = Fin * M, where M is (1..32)
+		*
+		* we need a USBCLK of 48MHz, so given a 12MHz crystal, M must be 4
+		*
+		* PLL1 = USBCLK * 2 * P, where P is one of (1, 2, 4, 8)
+		*
+		* PLL1 MUST be 156 to 320MHz.
+		* P=2 gives 192MHz, the only valid value within range
+		*
+		* PLL1CFG = (log2(P) << 5) + (M - 1)
+		*         = (1 << 5) + 3
+		*         = 0x23 for a 12MHz crystal
+		*/
+	LPC_SC->PLL1CFG   = 0x00000023;
+	LPC_SC->PLL1FEED  = 0xAA;
+	LPC_SC->PLL1FEED  = 0x55;
 
-  LPC_SC->CLKOUTCFG = CLKOUTCFG_Val;    /* Clock Output Configuration         */
-#endif
+	LPC_SC->PLL1CON   = 0x01;           /* PLL1 Enable                        */
+	LPC_SC->PLL1FEED  = 0xAA;
+	LPC_SC->PLL1FEED  = 0x55;
+	while (!(LPC_SC->PLL1STAT & (1<<10)));/* Wait for PLOCK1                    */
+
+	LPC_SC->PLL1CON   = 0x03;           /* PLL1 Enable & Connect              */
+	LPC_SC->PLL1FEED  = 0xAA;
+	LPC_SC->PLL1FEED  = 0x55;
+	while (!(LPC_SC->PLL1STAT & ((1<< 9) | (1<< 8))));/* Wait for PLLC1_STAT & PLLE1_STAT */
+
+	// this sets up {global uint32 SystemCoreClock} with the new speed
+	SystemCoreClockUpdate();
+
+	LPC_SC->PCONP     = PCONP_Val;      /* Power Control for Peripherals      */
+
+	LPC_SC->CLKOUTCFG = CLKOUTCFG_Val;  /* Clock Output Configuration         */
+	#endif
+
 
 #if (FLASH_SETUP == 1)                  /* Flash Accelerator Setup            */
   LPC_SC->FLASHCFG  = FLASHCFG_Val;
 #endif
 
-
+#ifndef __CC_ARM
 //  Set Vector table offset value
 #if (__RAM_MODE__==1)
 	extern uint32_t __cs3_region_start_ram;
@@ -606,6 +668,9 @@ void SystemInit (void)
 #else
 	extern uint32_t __cs3_region_start_rom;
 	SCB->VTOR  = __cs3_region_start_rom & 0x3FFFFF80;
+#endif
+#else
+    SCB->VTOR  = 0x0;
 #endif
 }
 

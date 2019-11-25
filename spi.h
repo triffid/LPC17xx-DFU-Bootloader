@@ -15,14 +15,14 @@ uint8_t SPI_write(uint8_t);
 
 int SPI_writeblock(uint8_t *, int);
 
-int SPI_can_DMA();
+int SPI_can_DMA(void);
 int setup_DMA_rx(DMA_REG *);
 int setup_DMA_tx(DMA_REG *);
 
 void SPI_irq(void);
 
 typedef void (*fptr)(void);
-fptr isr_dispatch[N_SPI_INTERRUPT_ROUTINES];
+extern fptr isr_dispatch[N_SPI_INTERRUPT_ROUTINES];
 
 
 #endif /* _SPI_H */
