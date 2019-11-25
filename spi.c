@@ -101,9 +101,13 @@ void SPI_init(PinName mosi, PinName miso, PinName sclk)
     }
 
     if (sspr) {
-        sspr->CR0 = SSP_DATABIT_8 |
-                    SSP_FRAME_SPI;
-        sspr->CR1 = SSP_MASTER_MODE;
+        // simple assignment does not work with gcc 6.3.1,
+        // this results in register being zero (compiler problem?)
+        sspr->CR0 &= ~SSP_CR0_BITMASK;
+        sspr->CR0 |= SSP_DATABIT_8 |
+                     SSP_FRAME_SPI ;
+        sspr->CR1 &= ~SSP_CR1_BITMASK;
+        sspr->CR1 |= SSP_MASTER_MODE;
         SPI_frequency(10000);
         sspr->CR1 |= SSP_CR1_SSP_EN;
     }
